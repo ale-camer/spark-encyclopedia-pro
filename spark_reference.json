@@ -1,0 +1,662 @@
+{
+  "sections": [
+    {
+      "id": "joins",
+      "title": "Join Types",
+      "icon": "🔗",
+      "description": "All join strategies available in PySpark. Understanding each type's behavior, row selection logic, and physical execution is critical for correct and performant pipelines.",
+      "entries": [
+        {
+          "id": "inner_join",
+          "title": "Inner Join",
+          "subtitle": "Returns only matching rows from both sides",
+          "description": "The most common join type. Returns rows where the join key exists in BOTH DataFrames. Rows from either side that have no match in the other are excluded entirely. In SQL: the classic JOIN or INNER JOIN.",
+          "when_to_use": "Use when you only care about records that have a corresponding match. Example: orders that have a matching customer, transactions with a matching product. If a record has no match, you don't want it.",
+          "syntax": "df1.join(df2, on='key', how='inner')",
+          "codigo_pyspark": "orders = spark.createDataFrame([\n    (1, 'Alice', 100),\n    (2, 'Bob',   200),\n    (3, 'Carol', 300),\n], ['order_id', 'customer', 'amount'])\n\ncustomers = spark.createDataFrame([\n    (1, 'Alice', 'NY'),\n    (2, 'Bob',   'CA'),\n    # Carol has no customer record!\n], ['order_id', 'name', 'state'])\n\nresult = orders.join(customers, on='order_id', how='inner')\nresult.show()",
+          "salida_consola": "+--------+--------+------+-----+-----+\n|order_id|customer|amount|name |state|\n+--------+--------+------+-----+-----+\n|       1|   Alice|   100|Alice|   NY|\n|       2|     Bob|   200|  Bob|   CA|\n+--------+--------+------+-----+-----+\n\n# Carol (order_id=3) was DROPPED — no match in customers table.",
+          "diagrama_mermaid": "graph LR\n    subgraph Left DF\n        L1[order 1: Alice]\n        L2[order 2: Bob]\n        L3[order 3: Carol]\n    end\n    subgraph Right DF\n        R1[customer 1: Alice]\n        R2[customer 2: Bob]\n    end\n    L1 -->|match| R1\n    L2 -->|match| R2\n    L3 -.->|no match - DROPPED| X[x]\n    style L3 fill:#7f1d1d\n    style X fill:#7f1d1d",
+          "edge_cases": [
+            "NULL keys never match — rows with NULL on the join key are excluded from the result even if both sides have NULL.",
+            "Duplicate keys on the right side create a Cartesian product for those keys.",
+            "Inner join on multiple columns: df1.join(df2, on=['key1', 'key2'], how='inner')"
+          ],
+          "tags": [
+            "join",
+            "inner",
+            "filter",
+            "match"
+          ]
+        },
+        {
+          "id": "left_outer_join",
+          "title": "Left Outer Join",
+          "subtitle": "All rows from left, matched rows from right",
+          "description": "Returns ALL rows from the left DataFrame, plus the matched row from the right when a match exists. When there's no match on the right, the right side columns are filled with NULL. Also called LEFT JOIN in SQL.",
+          "when_to_use": "Use when the left DataFrame is your 'source of truth' and you want to enrich it with optional data from the right. Example: get all customers and their latest order (if they have one). Customers without orders still appear.",
+          "syntax": "df1.join(df2, on='key', how='left')",
+          "codigo_pyspark": "users = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Carol'),  # No orders\n], ['user_id', 'name'])\n\norders = spark.createDataFrame([\n    (1, 'Laptop', 999),\n    (2, 'Phone',  499),\n], ['user_id', 'product', 'price'])\n\nresult = users.join(orders, on='user_id', how='left')  # or how='left_outer'\nresult.show()",
+          "salida_consola": "+-------+-----+-------+-----+\n|user_id| name|product|price|\n+-------+-----+-------+-----+\n|      1|Alice| Laptop|  999|\n|      2|  Bob|  Phone|  499|\n|      3|Carol|   null| null|  <-- Carol kept, right cols = NULL\n+-------+-----+-------+-----+",
+          "diagrama_mermaid": "graph LR\n    subgraph Left DF - ALL rows kept\n        L1[user 1: Alice]\n        L2[user 2: Bob]\n        L3[user 3: Carol]\n    end\n    subgraph Right DF\n        R1[order: Laptop]\n        R2[order: Phone]\n    end\n    L1 -->|match| R1\n    L2 -->|match| R2\n    L3 -->|no match - NULL fill| N[right cols = NULL]\n    style N fill:#1e3a5f",
+          "edge_cases": [
+            "To find records with NO match on right side: filter where a right-side column is NULL after the join.",
+            "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — finds unmatched left rows.",
+            "If right side has duplicate keys, left rows that match will be duplicated."
+          ],
+          "tags": [
+            "join",
+            "left",
+            "outer",
+            "null",
+            "optional"
+          ]
+        },
+        {
+          "id": "right_outer_join",
+          "title": "Right Outer Join",
+          "subtitle": "All rows from right, matched rows from left",
+          "description": "Mirror of Left Outer Join. Returns ALL rows from the right DataFrame, with NULL for unmatched left columns. Less common than LEFT — usually you can swap DataFrames and use LEFT instead, which is more intuitive.",
+          "when_to_use": "Use when the right DataFrame is the authoritative source. In practice, swapping DataFrames and using left join is usually cleaner and easier to reason about.",
+          "syntax": "df1.join(df2, on='key', how='right')",
+          "codigo_pyspark": "orders = spark.createDataFrame([\n    (1, 'Laptop', 999),\n    (2, 'Phone',  499),\n], ['user_id', 'product', 'price'])\n\nusers = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Carol'),  # No orders\n], ['user_id', 'name'])\n\n# Right join: ALL users appear regardless of orders\nresult = orders.join(users, on='user_id', how='right')\nresult.show()",
+          "salida_consola": "+-------+-------+-----+-----+\n|user_id|product|price| name|\n+-------+-------+-----+-----+\n|      1| Laptop|  999|Alice|\n|      2|  Phone|  499|  Bob|\n|      3|   null| null|Carol|  <-- Carol: no order, left cols = NULL\n+-------+-------+-----+-----+",
+          "edge_cases": [
+            "Equivalent to: users.join(orders, 'user_id', 'left') — right join is rarely necessary.",
+            "NULL padding happens on the LEFT side columns for unmatched right rows."
+          ],
+          "tags": [
+            "join",
+            "right",
+            "outer",
+            "null"
+          ]
+        },
+        {
+          "id": "full_outer_join",
+          "title": "Full Outer Join",
+          "subtitle": "All rows from both sides, NULLs where no match",
+          "description": "Returns ALL rows from BOTH DataFrames. Rows that have a match are combined. Rows with no match on the other side have NULL filled for the missing columns. Also called FULL JOIN or FULL OUTER JOIN in SQL.",
+          "when_to_use": "Use for data reconciliation: comparing two sources to find what's in one but not the other, or what's in both. Common in ETL pipelines for change detection (SCD Type 2).",
+          "syntax": "df1.join(df2, on='key', how='outer')",
+          "codigo_pyspark": "source_a = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Carol'),   # only in A\n], ['id', 'name_a'])\n\nsource_b = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (4, 'Dave'),    # only in B\n], ['id', 'name_b'])\n\nresult = source_a.join(source_b, on='id', how='outer')  # or 'full' or 'fullouter'\nresult.show()",
+          "salida_consola": "+---+------+------+\n| id|name_a|name_b|\n+---+------+------+\n|  1| Alice| Alice|  <- matched\n|  2|   Bob|   Bob|  <- matched\n|  3| Carol|  null|  <- only in A\n|  4|  null|  Dave|  <- only in B\n+---+------+------+",
+          "diagrama_mermaid": "graph LR\n    subgraph Left DF\n        L1[id=1 Alice]\n        L2[id=2 Bob]\n        L3[id=3 Carol]\n    end\n    subgraph Right DF\n        R1[id=1 Alice]\n        R2[id=2 Bob]\n        R4[id=4 Dave]\n    end\n    L1 <-->|match| R1\n    L2 <-->|match| R2\n    L3 -.->|no match - null right| NR[null]\n    R4 -.->|no match - null left| NL[null]\n    style NR fill:#1e3a5f\n    style NL fill:#1e3a5f",
+          "edge_cases": [
+            "Full outer join is expensive — it cannot use Broadcast Join strategy. Always results in a full shuffle.",
+            "To find rows ONLY in A: result.filter(result['name_b'].isNull())",
+            "To find rows ONLY in B: result.filter(result['name_a'].isNull())"
+          ],
+          "tags": [
+            "join",
+            "full",
+            "outer",
+            "reconciliation",
+            "all rows"
+          ]
+        },
+        {
+          "id": "cross_join",
+          "title": "Cross Join (Cartesian Product)",
+          "subtitle": "Every row in left paired with every row in right",
+          "description": "Returns the Cartesian product: each row of the left DataFrame paired with EVERY row of the right DataFrame. If left has M rows and right has N rows, the result has M×N rows. No join key is needed. Extremely expensive — use with caution.",
+          "when_to_use": "Use to generate all combinations of two small DataFrames. Common for: generating all date-product combinations for a reporting skeleton, or comparing each record against every other. ONLY use on small datasets.",
+          "syntax": "df1.crossJoin(df2)",
+          "codigo_pyspark": "dates = spark.createDataFrame([\n    ('2024-01-01',),\n    ('2024-01-02',),\n    ('2024-01-03',),\n], ['date'])\n\nproducts = spark.createDataFrame([\n    ('Laptop',),\n    ('Phone',),\n], ['product'])\n\n# 3 dates × 2 products = 6 rows\nresult = dates.crossJoin(products)\nresult.show()\n\n# In SQL-style:\n# spark.conf.set('spark.sql.crossJoin.enabled', 'true')  # needed for implicit cross\nresult2 = dates.join(products, how='cross')",
+          "salida_consola": "+----------+-------+\n|      date|product|\n+----------+-------+\n|2024-01-01| Laptop|\n|2024-01-01|  Phone|\n|2024-01-02| Laptop|\n|2024-01-02|  Phone|\n|2024-01-03| Laptop|\n|2024-01-03|  Phone|\n+----------+-------+\n# 3 × 2 = 6 rows",
+          "edge_cases": [
+            "If left=1M rows and right=1M rows → result = 1 TRILLION rows. Always check sizes first.",
+            "Spark requires spark.sql.crossJoin.enabled=true for implicit cross joins as a safety guard.",
+            "Performance: uses BroadcastNestedLoopJoin or CartesianProduct physical operator — no hash table."
+          ],
+          "tags": [
+            "join",
+            "cross",
+            "cartesian",
+            "combination",
+            "all pairs"
+          ]
+        },
+        {
+          "id": "left_semi_join",
+          "title": "Left Semi Join",
+          "subtitle": "Returns left rows that have a match in right — right columns excluded",
+          "description": "Returns rows from the LEFT DataFrame where a match exists in the right, BUT does not include any columns from the right side. It's like an INNER JOIN but you only get the left columns. Useful as a filter based on another dataset.",
+          "when_to_use": "Use as an existence filter: 'Give me all customers who placed at least one order' — without duplicating customer rows for customers with multiple orders. More efficient than inner join when you don't need right-side columns.",
+          "syntax": "df1.join(df2, on='key', how='leftsemi')",
+          "codigo_pyspark": "customers = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Carol'),  # no orders\n], ['id', 'name'])\n\norders = spark.createDataFrame([\n    (1, 'Laptop'),\n    (1, 'Mouse'),  # Alice has 2 orders\n    (2, 'Phone'),\n], ['customer_id', 'product'])\n\n# Who placed an order? No duplicates, no right columns\nresult = customers.join(orders, customers['id'] == orders['customer_id'], how='leftsemi')\nresult.show()",
+          "salida_consola": "+---+-----+\n| id| name|\n+---+-----+\n|  1|Alice|  <-- has orders (kept, not duplicated)\n|  2|  Bob|  <-- has orders\n+---+-----+\n# Carol excluded. Alice NOT duplicated despite 2 orders.\n# Right columns (product) NOT included.",
+          "diagrama_mermaid": "graph LR\n    subgraph Left DF - source\n        L1[id=1 Alice]\n        L2[id=2 Bob]\n        L3[id=3 Carol]\n    end\n    subgraph Right DF - existence check only\n        R1[customer_id=1]\n        R2[customer_id=1]\n        R3[customer_id=2]\n    end\n    L1 -->|exists in right - KEEP| OUT1[Alice]\n    L2 -->|exists in right - KEEP| OUT2[Bob]\n    L3 -.->|not in right - DROP| X[x]\n    style X fill:#7f1d1d\n    style L3 fill:#7f1d1d",
+          "edge_cases": [
+            "Result schema only contains LEFT DataFrame columns — no right columns appear.",
+            "Multiple matches on right side do NOT duplicate left rows (unlike inner join).",
+            "Equivalent SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+          ],
+          "tags": [
+            "join",
+            "semi",
+            "filter",
+            "existence",
+            "no duplicates"
+          ]
+        },
+        {
+          "id": "left_anti_join",
+          "title": "Left Anti Join",
+          "subtitle": "Returns left rows that have NO match in right",
+          "description": "The opposite of Left Semi Join. Returns rows from the LEFT DataFrame where NO match exists in the right side. Perfect for finding missing or orphaned records. Columns come from left DataFrame only.",
+          "when_to_use": "Use to find records that DON'T exist in another table. Example: customers who never placed an order, products with no sales, users who haven't logged in this month. Also useful for validating data completeness.",
+          "syntax": "df1.join(df2, on='key', how='leftanti')",
+          "codigo_pyspark": "customers = spark.createDataFrame([\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Carol'),  # no orders\n    (4, 'Dave'),   # no orders\n], ['id', 'name'])\n\norders = spark.createDataFrame([\n    (1, 'Laptop'),\n    (2, 'Phone'),\n], ['customer_id', 'product'])\n\n# Who has NEVER placed an order?\nresult = customers.join(orders, customers['id'] == orders['customer_id'], how='leftanti')\nresult.show()",
+          "salida_consola": "+---+-----+\n| id| name|\n+---+-----+\n|  3|Carol|  <-- NO orders — included\n|  4| Dave|  <-- NO orders — included\n+---+-----+\n# Alice and Bob excluded because they DO have orders.",
+          "diagrama_mermaid": "graph LR\n    subgraph Left DF\n        L1[id=1 Alice]\n        L2[id=2 Bob]\n        L3[id=3 Carol]\n        L4[id=4 Dave]\n    end\n    subgraph Right DF - exclusion set\n        R1[customer_id=1]\n        R2[customer_id=2]\n    end\n    L1 -.->|match found - DROP| X1[x]\n    L2 -.->|match found - DROP| X2[x]\n    L3 -->|no match - KEEP| OUT1[Carol]\n    L4 -->|no match - KEEP| OUT2[Dave]\n    style X1 fill:#7f1d1d\n    style X2 fill:#7f1d1d\n    style L1 fill:#7f1d1d\n    style L2 fill:#7f1d1d",
+          "edge_cases": [
+            "Rows with NULL join keys: NULL != NULL so NULL keys on the left will always appear in anti join results.",
+            "Equivalent SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+            "More efficient alternative to: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+          ],
+          "tags": [
+            "join",
+            "anti",
+            "exclude",
+            "missing",
+            "orphan",
+            "not in"
+          ]
+        },
+        {
+          "id": "self_join",
+          "title": "Self Join",
+          "subtitle": "Joining a DataFrame with itself",
+          "description": "A self join is when you join a DataFrame with a copy of itself. Used for hierarchical relationships or comparing rows within the same dataset. Requires aliasing to distinguish the two sides.",
+          "when_to_use": "Use for: finding manager-employee relationships in the same table, comparing each row to other rows (e.g., finding duplicate transactions), or traversing tree/graph structures stored in one table.",
+          "syntax": "df.alias('a').join(df.alias('b'), on=col('a.key') == col('b.key'))",
+          "codigo_pyspark": "from pyspark.sql.functions import col\n\nemployees = spark.createDataFrame([\n    (1, 'Alice',  None),   # CEO, no manager\n    (2, 'Bob',    1),      # reports to Alice\n    (3, 'Carol',  1),      # reports to Alice\n    (4, 'Dave',   2),      # reports to Bob\n], ['id', 'name', 'manager_id'])\n\n# Find each employee and their manager's name\nresult = employees.alias('emp') \\\n    .join(\n        employees.alias('mgr'),\n        col('emp.manager_id') == col('mgr.id'),\n        how='left'\n    ) \\\n    .select(\n        col('emp.name').alias('employee'),\n        col('mgr.name').alias('manager')\n    )\nresult.show()",
+          "salida_consola": "+--------+-------+\n|employee|manager|\n+--------+-------+\n|   Alice|   null|  <-- CEO, no manager\n|     Bob|  Alice|\n|   Carol|  Alice|\n|    Dave|    Bob|\n+--------+-------+",
+          "edge_cases": [
+            "Always alias both sides of a self join — without aliases Spark cannot resolve column ambiguity.",
+            "For deep hierarchies (more than 2 levels), use GraphX or iterative joins with .checkpoint() to avoid lineage explosion.",
+            "Self join with inner creates N² combinations — filter carefully."
+          ],
+          "tags": [
+            "join",
+            "self",
+            "hierarchy",
+            "recursive",
+            "alias"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "window_functions",
+      "title": "Window Functions",
+      "icon": "🪟",
+      "description": "Advanced analytical operations that calculate values across a set of rows related to the current row. Includes ranking, offsets, and rolling aggregates.",
+      "entries": [
+        {
+          "id": "ranking_functions",
+          "title": "Ranking: row_number vs rank vs dense_rank",
+          "subtitle": "Managing duplicates and numbering protocols",
+          "description": "These functions assign a sequential number to each row within a window partition. The main difference is how they handle ties (rows with the same values in order by clause).",
+          "when_to_use": "Use row_number for unique identifiers, rank for competition-style ties (skipping numbers), and dense_rank for consecutive ties (no gaps).",
+          "syntax": "from pyspark.sql.window import Window\nfrom pyspark.sql.functions import row_number, rank, dense_rank\n\nw = Window.partitionBy(\"dept\").orderBy(\"salary\")\ndf.withColumn(\"rn\", row_number().over(w))",
+          "codigo_pyspark": "from pyspark.sql import Window\nfrom pyspark.sql.functions import row_number, rank, dense_rank\n\ndata = [(1, \"A\", 100), (2, \"A\", 100), (3, \"A\", 150)]\ndf = spark.createDataFrame(data, [\"id\", \"dept\", \"salary\"])\n\nw = Window.partitionBy(\"dept\").orderBy(\"salary\")\n\ndf.select(\n    \"*\",\n    row_number().over(w).alias(\"row_num\"),\n    rank().over(w).alias(\"rank\"),\n    dense_rank().over(w).alias(\"dense_rank\")\n).show()",
+          "salida_consola": "+---+----+------+-------+----+----------+\n| id|dept|salary|row_num|rank|dense_rank|\n+---+----+------+-------+----+----------+\n|  1|   A|   100|      1|   1|         1|\n|  2|   A|   100|      2|   1|         1|  <-- Tie!\n|  3|   A|   150|      3|   3|         2|  <-- rank skips 2\n+---+----+------+-------+----+----------+",
+          "diagrama_mermaid": "graph TD\n    subgraph Partition A\n        R1[100] --> RN1[rn:1, rank:1, dense:1]\n        R2[100] --> RN2[rn:2, rank:1, dense:1]\n        R3[150] --> RN3[rn:3, rank:3, dense:2]\n    end",
+          "edge_cases": [
+            "If no orderBy is specified, row_number might be non-deterministic.",
+            "Partitioning by high-cardinality columns can cause memory pressure."
+          ],
+          "tags": [
+            "window",
+            "rank",
+            "number"
+          ]
+        },
+        {
+          "id": "offset_functions",
+          "title": "Offset: lag vs lead",
+          "subtitle": "Accessing previous or next records",
+          "description": "Lag and Lead allow you to access data from other rows (before or after) without doing self-joins. Lag looks back N rows, Lead looks forward N rows.",
+          "when_to_use": "Perfect for time-series analysis: calculating month-over-month growth, detecting status changes, or finding the time difference between events.",
+          "syntax": "from pyspark.sql.functions import lag, lead\nlag(\"col\", offset=1, default=None).over(window)",
+          "codigo_pyspark": "from pyspark.sql import Window\nfrom pyspark.sql.functions import lag, col\n\ndata = [(\"Jan\", 100), (\"Feb\", 120), (\"Mar\", 110)]\ndf = spark.createDataFrame(data, [\"month\", \"sales\"])\n\nw = Window.orderBy(\"month\") # Simple order\n\ndf.withColumn(\"prev_sales\", lag(\"sales\", 1).over(w)) \\n  .withColumn(\"diff\", col(\"sales\") - col(\"prev_sales\")).show()",
+          "salida_consola": "+-----+-----+----------+----+\n|month|sales|prev_sales|diff|\n+-----+-----+----------+----+\n|  Feb|  120|      null|null|  <-- alphabetical order (Feb first)\n|  Jan|  100|       120| -20|\n|  Mar|  110|       100|  10|\n+-----+-----+----------+----+",
+          "diagrama_mermaid": "graph LR\n    R1[Row 1] -->|lead| R2[Row 2]\n    R2 -->|lag| R1\n    R2 -->|lead| R3[Row 3]\n    R3 -->|lag| R2",
+          "edge_cases": [
+            "Default values are important to avoid NULLs in the first/last row.",
+            "Ordering must be strict for stable lag/lead results."
+          ],
+          "tags": [
+            "window",
+            "offset",
+            "time-series"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aggregations",
+      "title": "Aggregations",
+      "icon": "📊",
+      "description": "How Spark computes summary statistics across groups. Understanding Hash vs Sort Aggregate and how grouping impacts shuffle is key for large-scale data.",
+      "entries": [
+        {
+          "id": "hash_aggregate",
+          "title": "Hash Aggregate",
+          "subtitle": "The default and fastest aggregation method",
+          "description": "Spark builds a hash map in memory where keys are the grouping columns and values are the running aggregates. It operates in two phases: partial aggregation (on executors) and final aggregation (after shuffle).",
+          "when_to_use": "The default choice for most groupBys. It is extremely fast as long as the unique groups for a partition fit in the executor memory heap.",
+          "syntax": "df.groupBy(\"dept\").agg(sum(\"salary\"))",
+          "codigo_pyspark": "from pyspark.sql.functions import sum, avg\n\ndf = spark.createDataFrame([\n    (\"IT\", 1000), (\"IT\", 1500), (\"Sales\", 2000)\n], [\"dept\", \"salary\"])\n\n# Spark usually picks HashAggregate here\ndf.groupBy(\"dept\").agg(sum(\"salary\").alias(\"total\")).show()",
+          "salida_consola": "+-----+-----+\n| dept|total|\n+-----+-----+\n|   IT| 2500|\n|Sales| 2000|\n+-----+-----+\n\n== Physical Plan ==\n*(2) HashAggregate(keys=[dept], functions=[sum(salary)])\n+- Exchange hashpartitioning(dept, 200)\n   +- *(1) HashAggregate(keys=[dept], functions=[partial_sum(salary)])",
+          "diagrama_mermaid": "graph TD\n    subgraph Executor 1\n        P1[Input Partition] --> H1{Hash Map in RAM}\n    end\n    subgraph Executor 2\n        P2[Input Partition] --> H2{Hash Map in RAM}\n    end\n    H1 --> S[Shuffle Exchange]\n    H2 --> S\n    S --> F{Final Aggregate}",
+          "edge_cases": [
+            "Memory pressure: If there are too many unique keys, Spark might spill to disk or fallback to SortAggregate.",
+            "High cardinality groups: Can lead to skewed shuffles."
+          ],
+          "tags": [
+            "agg",
+            "hash",
+            "performance"
+          ]
+        },
+        {
+          "id": "sort_aggregate",
+          "title": "Sort Aggregate",
+          "subtitle": "The spill-safe fallback for massive groups",
+          "description": "Requires the data to be sorted by grouping keys. Spark then iterates through the sorted data, accumulating values for a key until it sees a new key.",
+          "when_to_use": "Used when grouping keys are too large for a hash map or when data is already sorted. It is slower than HashAggregate but more memory-robust as it does not require a random-access hash map.",
+          "syntax": "-- Forced by Spark automatically when needed\n== Physical Plan ==\nSortAggregate(keys=[...])",
+          "codigo_pyspark": "# Not directly invokable, but Spark uses it if memory is tight\n# or if the data type doesn't support hashing.\ndf.groupBy(\"very_large_column\").count().explain()",
+          "salida_consola": "== Physical Plan ==\nSortAggregate(keys=[large_col#1], functions=[count(1)])\n+- Sort [large_col#1 ASC NULLS FIRST], false, 0\n   +- Exchange hashpartitioning(large_col#1, 200)",
+          "diagrama_mermaid": "graph LR\n    I[Unsorted Data] --> S[Sort by Key]\n    S --> A[Iterate & Accumulate]\n    A --> O[Output: Key + Count]",
+          "edge_cases": [
+            "Additional overhead of sorting if not already sorted.",
+            "Spill-safe: Will not crash on OOM as easily as HashAggregate."
+          ],
+          "tags": [
+            "agg",
+            "sort",
+            "memory"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storage_and_pushdown",
+      "title": "Storage & Pushdown",
+      "icon": "📦",
+      "description": "How data layout on disk affects Spark performance. Optimized formats (Parquet/Delta) allow Spark to read only the data it needs.",
+      "entries": [
+        {
+          "id": "columnar_formats",
+          "title": "Columnar vs Row Formats",
+          "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+          "description": "Columnar formats store data by column rather than by row. This is highly efficient for analytical queries (OLAP) because Spark can skip entire columns that are not in the SELECT clause.",
+          "when_to_use": "Always use Parquet or Delta for large-scale analytical workloads. Avoid CSV/JSON for anything other than raw landing zones.",
+          "syntax": "df.write.format(\"parquet\").save(\"path\")",
+          "codigo_pyspark": "# Reading only specific columns from Parquet\ndf = spark.read.parquet(\"huge_dataset.parquet\") \\n    .select(\"id\", \"status\") # Only these 2 columns are actually read from disk!",
+          "salida_consola": "== Physical Plan ==\n*(1) FileScan parquet [id#1,status#5] Batched: true, DataFilters: [], Format: Parquet, Location: ..., PartitionFilters: [], ReadSchema: struct<id:bigint,status:string>",
+          "diagrama_mermaid": "graph LR\n    subgraph Parquet File\n        C1[Column: Date]\n        C2[Column: ID]\n        C3[Column: Payload]\n    end\n    S[Spark Query: SELECT id] --> C2\n    style C3 fill:#7f1d1d",
+          "edge_cases": [
+            "Schema evolution is better handled by Delta Lake.",
+            "Row-based formats (Avro) are better for high-throughput writes/streaming."
+          ],
+          "tags": [
+            "storage",
+            "parquet",
+            "columnar"
+          ]
+        },
+        {
+          "id": "predicate_pushdown",
+          "title": "Predicate & Projection Pushdown",
+          "subtitle": "Filtering data at the storage layer",
+          "description": "Spark pushes the FILTER (WHERE clause) and SELECT down to the storage layer. The reader (Parquet/Delta) only returns rows and columns that match the filter, vastly reducing I/O.",
+          "when_to_use": "Essential for performance. Spark does this automatically if the format supports it. Ensure you partition your data by columns you frequently filter on.",
+          "syntax": "df.filter(col(\"date\") == \"2024-01-01\").select(\"id\")",
+          "codigo_pyspark": "# Pushdown example\ndf = spark.read.parquet(\"data/\") \\n    .filter(\"amount > 1000\") \\n    .select(\"transaction_id\")\n\ndf.explain()",
+          "salida_consola": "== Physical Plan ==\n*(1) FileScan parquet [transaction_id#1] PushedFilters: [IsNotNull(amount), GreaterThan(amount,1000)], ReadSchema: struct<transaction_id:string,amount:double>",
+          "diagrama_mermaid": "graph TD\n    D[Disk Storage] -->|Filter: amount > 1000| R[Storage Reader]\n    R -->|Only 10% of data| E[Spark Executor]\n    E --> Output",
+          "edge_cases": [
+            "Pushdown does not work for UDFs or complex expressions.",
+            "Filter must be on a top-level column usually."
+          ],
+          "tags": [
+            "pushdown",
+            "optimization",
+            "io"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "persistence_and_caching",
+      "title": "Persistence & Caching",
+      "icon": "💾",
+      "description": "How to reuse intermediate DataFrames without recomputing the entire lineage. Critical for iterative algorithms and multiple actions.",
+      "entries": [
+        {
+          "id": "cache_vs_persist",
+          "title": "cache() vs persist()",
+          "subtitle": "Managing memory and lineage",
+          "description": "cache() is a shorthand for persist(MEMORY_AND_DISK). It tells Spark to store the DataFrame in memory (and disk if it doesn't fit) after it is computed for the first time.",
+          "when_to_use": "Use when the same DataFrame is used in multiple downstream actions. Example: computing a summary and then saving the raw data.",
+          "syntax": "df.cache() # or df.persist(StorageLevel.MEMORY_ONLY)",
+          "codigo_pyspark": "from pyspark import StorageLevel\n\ndf = spark.read.parquet(\"huge_data/\").filter(\"amount > 100\")\ndf.cache() # Mark for caching\n\n# First action: computes and CACHES\nprint(df.count())\n\n# Second action: reads from CACHE (FAST!)\ndf.write.save(\"output/\")",
+          "salida_consola": "== Batch 1 (uncached) ==\nJob 1: 45s\n\n== Batch 2 (cached) ==\nJob 2: 2s (Reads from Memory)",
+          "diagrama_mermaid": "graph TD\n    L[Lineage] --> C[Cache Layer]\n    C --> A1[Action 1]\n    C --> A2[Action 2]\n    A1 -->|Reads from Cache| C\n    A2 -->|Reads from Cache| C",
+          "tags": [
+            "cache",
+            "persist",
+            "lineage"
+          ]
+        },
+        {
+          "id": "checkpointing",
+          "title": "Checkpointing",
+          "subtitle": "Breaking the lineage for safety",
+          "description": "Unlike cache, checkpoint() saves the data to a reliable storage (HDFS/S3) and TRUNCATES the lineage. This prevents lineage chains from becoming too long and causing StackOverflowErrors.",
+          "when_to_use": "Use in iterative algorithms (Machine Learning) or when the lineage is extremely complex. It is slower than cache but more reliable.",
+          "syntax": "spark.sparkContext.setCheckpointDir(\"path\")\ndf.checkpoint()",
+          "codigo_pyspark": "spark.sparkContext.setCheckpointDir(\"tmp/checkpoints\")\n\ndf = spark.read.json(\"raw_data/\")\n# ... 50 transformations ...\ndf_final = df.checkpoint()\n\n# df_final has NO lineage back to raw_data\ndf_final.explain()",
+          "salida_consola": "== Physical Plan ==\n*(1) Scan ExistingRDD [id#1,name#2]\n(Lineage truncated!)",
+          "diagrama_mermaid": "graph LR\n    L1[Complex Lineage] --X|Truncated| CP[Checkpoint File on Disk]\n    CP --> A[Action]",
+          "tags": [
+            "checkpoint",
+            "lineage",
+            "reliability"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aqe_optimizations",
+      "title": "Core Optimization & AQE",
+      "icon": "🚀",
+      "description": "How Spark adapts its execution plan at runtime based on actual data statistics. Adaptive Query Execution (AQE) is the biggest performance boost in Modern Spark.",
+      "entries": [
+        {
+          "id": "aqe_overview",
+          "title": "Adaptive Query Execution (AQE)",
+          "subtitle": "The brain of Modern Spark (3.x+)",
+          "description": "AQE re-optimizes the query plan BETWEEN query stages. It uses runtime statistics from completed stages to improve the plan for remaining stages.",
+          "when_to_use": "Enabled by default in Spark 3.2+. Always keep it on. It handles three main problems: Coalescing partitions, Switching join strategies, and Optimizing skew joins.",
+          "syntax": "spark.conf.set(\"spark.sql.adaptive.enabled\", \"true\")",
+          "codigo_pyspark": "# No special code needed, just check the explain plan\ndf1.join(df2, \"id\").groupBy(\"type\").count().explain()",
+          "salida_consola": "== Physical Plan ==\nAdaptiveSparkPlan(isFinalPlan=true)\n+- HashAggregate(keys=[type#2], functions=[count(1)])\n   +- AQEShuffleRead(coalesced)\n      +- Exchange hashpartitioning(type#2, 200)",
+          "diagrama_mermaid": "graph LR\n    S1[Stage 1 Done] --> R[Runtime Stats]\n    R --> P[Optimizer Re-plans]\n    P --> S2[Stage 2 Executed with New Plan]",
+          "tags": [
+            "aqe",
+            "optimization",
+            "runtime"
+          ]
+        },
+        {
+          "id": "skew_join_optimization",
+          "title": "Skew Join Optimization",
+          "subtitle": "Handling uneven data distributions",
+          "description": "Data skew occurs when one partition has way more data than others, making one task take 10x longer. AQE detects this and splits the skewed partition into smaller sub-partitions.",
+          "when_to_use": "When you see \"straggler tasks\" in the Spark UI. AQE handles this automatically by looking for partitions much larger than the average.",
+          "syntax": "spark.conf.set(\"spark.sql.adaptive.skewJoin.enabled\", \"true\")",
+          "codigo_pyspark": "# Before AQE: 1 task takes 10 mins, others 10 secs\n# After AQE: The 10-min task is split into 10 smaller tasks.",
+          "salida_consola": "== physical plan ==\nSortMergeJoin(skew=true)",
+          "diagrama_mermaid": "graph TD\n    subgraph Before AQE\n        T1[Small]\n        T2[HUGE SKEW]\n        T3[Small]\n    end\n    subgraph After AQE\n        T1[Small]\n        T2a[Split 1]\n        T2b[Split 2]\n        T2c[Split 3]\n        T3[Small]\n    end",
+          "tags": [
+            "skew",
+            "join",
+            "performance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "title": "Infrastructure & Deployment",
+      "icon": "🏗️",
+      "description": "How Spark connects to cluster managers and manages application lifecycle. This is the foundation of every Spark job.",
+      "entries": [
+        {
+          "id": "cluster_managers",
+          "title": "Cluster Managers (YARN vs K8s)",
+          "subtitle": "Resource orchestration strategies",
+          "description": "Spark can run on various cluster managers. YARN is the traditional Hadoop manager, while Kubernetes (K8s) is the modern cloud-native approach.",
+          "when_to_use": "Use YARN for legacy on-prem Hadoop clusters. Use K8s for cloud-native, containerized environments requiring better isolation and autoscaling.",
+          "syntax": "spark-submit --master yarn ... \nspark-submit --master k8s://... ",
+          "codigo_pyspark": "# Setting master in code (not recommended for prod)\nspark = SparkSession.builder \\n    .master(\"yarn\") \\n    .appName(\"MyJob\") \\n    .getOrCreate()",
+          "salida_consola": "24/03/27 10:00:15 INFO YarnClientImpl: Submitted application application_16123456789_0001",
+          "diagrama_mermaid": "graph TD\n    D[Driver] -->|Request Resources| CM[Cluster Manager: YARN/K8s]\n    CM -->|Allocate Containers| E1[Executor 1]\n    CM -->|Allocate Containers| E2[Executor 2]\n    E1 <--> D\n    E2 <--> D",
+          "tags": [
+            "infra",
+            "yarn",
+            "k8s",
+            "deployment"
+          ]
+        },
+        {
+          "id": "deployment_modes",
+          "title": "Client vs Cluster Mode",
+          "subtitle": "Where does the Driver live?",
+          "description": "In Client Mode, the driver runs on the machine you submit from. In Cluster Mode, the driver runs inside the cluster (on a worker node).",
+          "when_to_use": "Use Client Mode for interactive debugging/notebooks. Use Cluster Mode for production jobs to avoid network latency and driver failure if your local machine disconnects.",
+          "syntax": "--deploy-mode cluster",
+          "codigo_pyspark": "# No code change needed, only spark-submit flags",
+          "salida_consola": "INFO: Driver successfully started on executor node: 10.0.1.5",
+          "diagrama_mermaid": "graph LR\n    subgraph Local Machine\n        S[spark-submit]\n    end\n    subgraph Cluster\n        D[Driver Node]\n        W1[Worker 1]\n        W2[Worker 2]\n    end\n    S -->|Submit| D",
+          "tags": [
+            "deploy",
+            "mode",
+            "cluster",
+            "client"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "memory_management",
+      "title": "Unified Memory Management",
+      "icon": "🧠",
+      "description": "How Spark splits executor RAM between calculation (Execution) and cache (Storage). Spark 3.x uses a unified approach.",
+      "entries": [
+        {
+          "id": "memory_regions",
+          "title": "Execution vs Storage Memory",
+          "subtitle": "The dynamic boundary",
+          "description": "Execution Memory is for shuffles/joins. Storage Memory is for caching. They share the same pool; if one is free, the other can borrow it.",
+          "when_to_use": "Adjust spark.memory.fraction (default 0.6) and spark.memory.storageFraction (default 0.5) if you have heavy caching or massive shuffles.",
+          "syntax": "spark.memory.fraction = 0.6\nspark.memory.storageFraction = 0.5",
+          "codigo_pyspark": "# Check settings\nprint(spark.conf.get(\"spark.memory.fraction\"))",
+          "salida_consola": "MemoryManager: Allocated 2GB for Execution, 1.5GB for Storage (Borrowed)",
+          "diagrama_mermaid": "graph LR\n    subgraph Executor JVM RAM\n        subgraph Spark Memory (60%)\n            E[Execution Memory]\n            S[Storage Memory]\n            E <-->|Eviction/Borrow| S\n        end\n        U[User Memory: 40%]\n    end",
+          "tags": [
+            "memory",
+            "ram",
+            "performance",
+            "gc"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "structured_streaming",
+      "title": "Structured Streaming",
+      "icon": "🌊",
+      "description": "Advanced concepts for processing streams of data reliably, handling state, and dealing with late-arriving records out of order.",
+      "entries": [
+        {
+          "id": "watermarking_logic",
+          "title": "Watermarks & Late Data",
+          "subtitle": "Limiting memory usage in stateful streams",
+          "description": "A watermark is a trailing threshold. If the max event time seen is T, and the watermark is W, any data arriving with an event time older than (T - W) is dropped. This allows Spark to clear old state from memory.",
+          "when_to_use": "Mandatory anytime you use aggregations or joins over event time in Structured Streaming. Without it, state grows infinitely leading to OOM.",
+          "syntax": "df.withWatermark(\"timestamp_col\", \"10 minutes\")",
+          "codigo_pyspark": "from pyspark.sql.functions import window\n\n# Allow data up to 10 minutes late\nwindowed_counts = df \\n  .withWatermark(\"event_time\", \"10 minutes\") \\n  .groupBy(window(\"event_time\", \"1 minute\"), \"type\") \\n  .count()",
+          "salida_consola": "WARN WatermarkTracker: Updating watermark to 2026-03-27T10:15:00\nWARN FlatMapGroupsWithState: Dropped 5 rows arriving later than watermark.",
+          "diagrama_mermaid": "graph LR\n    E[Event Time:\n 10:20] -->|Max Time Seen| S{Spark Engine}\n    S -->|Calculates Watermark\n10:20 - 10 mins = 10:10| W[Watermark: 10:10]\n    L[Late Event:\n 10:05] -->|Dropped! < 10:10| X((X))\n    G[Good Event:\n 10:15] -->|Accepted > 10:10| State[(State Store)]",
+          "tags": [
+            "streaming",
+            "watermark",
+            "state"
+          ]
+        },
+        {
+          "id": "output_modes",
+          "title": "Streaming Output Modes",
+          "subtitle": "How Spark writes stream results",
+          "description": "1. Append: Only writes NEW rows that will never change (requires Watermark for aggregations).\n2. Update: Writes only the rows that were updated in the last trigger.\n3. Complete: Writes the ENTIRE result table every trigger.",
+          "when_to_use": "Append for saving to logs. Update for writing to a database. Complete for tiny reference tables or total counts.",
+          "syntax": ".writeStream.outputMode(\"append|update|complete\")",
+          "codigo_pyspark": "# Writing an aggregation to Delta format\nquery = agg_df.writeStream \\n  .outputMode(\"update\") \\n  .format(\"delta\") \\n  .option(\"checkpointLocation\", \"/tmp/checkpoints/\") \\n  .start(\"/tmp/delta_output/\")",
+          "diagrama_mermaid": "graph TD\n    subgraph Trigger 1: A=1, B=1\n      App1[Append: A=1, B=1]\n      Upd1[Update: A=1, B=1]\n      Com1[Complete: A=1, B=1]\n    end\n    subgraph Trigger 2: A=2, C=1\n      App2[Append: -WAITING WATERMARK-]\n      Upd2[Update: A=2, C=1]\n      Com2[Complete: A=2, B=1, C=1]\n    end",
+          "tags": [
+            "streaming",
+            "output",
+            "writeStream"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data_governance",
+      "title": "Data Governance & Security",
+      "icon": "🛡️",
+      "description": "How Spark integrates with Catalogs to provide data discovery, schema enforcement, and fine-grained access control.",
+      "entries": [
+        {
+          "id": "catalogs_metastore",
+          "title": "Hive Metastore vs Unity Catalog",
+          "subtitle": "Centralizing tables and metadata",
+          "description": "A Catalog or Metastore acts as the central directory of all your datasets. It maps table names (e.g. \"sales.customers\") to physical files (e.g. \"s3://bucket/path/parquet/\"). Hive Metastore (HMS) is the legacy open-source standard. Unity Catalog is the modern enterprise standard for Lakehouses.",
+          "when_to_use": "Always use a Catalog in production. Never rely purely on file paths in code. It decouples the physical storage from the logical table, allowing seamless migrations.",
+          "syntax": "spark.sql(\"CREATE TABLE db.table USING delta LOCATION 's3://...'\")",
+          "codigo_pyspark": "# Querying a cataloged table using Spark SQL API\ndf = spark.table(\"prod.sales.european_orders\")\n\n# Listing metadata dynamically via Catalog API\nspark.catalog.listDatabases()\nspark.catalog.listTables(\"prod\")",
+          "salida_consola": "+-------+--------+-----------+---------+-----------+\n|name   |catalog |namespace  |type     |isTemporary|\n+-------+--------+-----------+---------+-----------+\n|orders |spark_c |prod, sales|MANAGED  |false      |\n|events |spark_c |prod, logs |EXTERNAL |false      |\n+-------+--------+-----------+---------+-----------+",
+          "diagrama_mermaid": "graph LR\n    S[Spark Application] -->|SQL Query| C{Catalog / Metastore}\n    C -->|Returns File Paths| S\n    S -->|Reads actual data| D[(S3 / ADLS Lake)]\n    style C fill:#1e3a8a",
+          "tags": [
+            "governance",
+            "catalog",
+            "hive",
+            "unity"
+          ]
+        },
+        {
+          "id": "acls_fgac",
+          "title": "Fine-Grained Access Control (FGAC)",
+          "subtitle": "Row and Column Level Security",
+          "description": "Storage-level security (IAM roles) only protects directories (bucket-level). Modern catalogs like Unity Catalog or AWS Lake Formation allow you to write SQL GRANT statements to restrict access to specific rows (e.g., only users in \"UK\" can see UK rows) or columns (masking SSN).",
+          "when_to_use": "Required for handling PII (Personally Identifiable Information), GDPR compliance, and multi-tenant data platforms.",
+          "syntax": "GRANT SELECT ON TABLE customers TO analyst_role;",
+          "codigo_pyspark": "# Example of Dynamic View for Row/Column security\n# Analysts querying this view only see their own country's data:\n\nspark.sql(\"\"\"\nCREATE VIEW v_sales_secure AS \nSELECT \n  id,\n  amount,\n  CASE WHEN is_account_group_member('hr') THEN ssn ELSE '***' END AS ssn\nFROM sales\nWHERE country = current_user_country()\n\"\"\")",
+          "tags": [
+            "security",
+            "acls",
+            "fgac",
+            "row-level"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "complex_types",
+      "title": "Complex Data Types",
+      "icon": "🧩",
+      "description": "Working with non-scalar data like Arrays, Structs, Maps, and raw JSON strings. Essential for modern API and NoSQL data sources.",
+      "entries": [
+        {
+          "id": "explode_vs_hof",
+          "title": "Explode vs Higher-Order Functions",
+          "subtitle": "Managing Array columns",
+          "description": "Arrays can be unnested into multiple rows using explode(), which multiplies the dataset size. Alternatively, Higher-Order Functions (like transform, filter) allow map/reduce operations directly inside the array without adding rows.",
+          "when_to_use": "Use explode() if you need to group/join by the individual array items. Use transform() if you just need to mutate the array (e.g., multiply all taxes by 1.2) while maintaining the original row count.",
+          "syntax": "explode(col) vs transform(col, x -> action(x))",
+          "codigo_pyspark": "from pyspark.sql.functions import explode, expr\n\n# 1. EXPLODE: 1 row with [A, B] becomes 2 rows\ndf_flat = df.withColumn(\"item\", explode(\"items_array\"))\n\n# 2. TRANSFORM (Spark 3+): 1 row stays 1 row\ndf_mapped = df.withColumn(\n    \"prices_with_tax\",\n    expr(\"transform(prices_array, price -> price * 1.21)\")\n)",
+          "salida_consola": "# EXPLODE Result\n+---+---------+\n|id |item     |\n+---+---------+\n|1  |Apple    |\n|1  |Banana   |\n+---+---------+\n\n# TRANSFORM Result\n+---+--------------------------+\n|id |prices_with_tax           |\n+---+--------------------------+\n|1  |[12.10, 24.20, 36.30]     |\n+---+--------------------------+",
+          "tags": [
+            "arrays",
+            "explode",
+            "transform",
+            "hof"
+          ]
+        },
+        {
+          "id": "json_parsing",
+          "title": "JSON Parsing: Structs vs Strings",
+          "subtitle": "from_json vs get_json_object",
+          "description": "When dealing with a JSON text column, you can either extract a single path as a string (get_json_object) or cast the entire JSON string into a native Spark StructType using a schema (from_json).",
+          "when_to_use": "Use from_json() with a defined schema whenever possible. It parses the JSON once and stores it in typed columns, which is much faster than calling get_json_object() multiple times on the same row.",
+          "syntax": "from_json(col, schema) vs get_json_object(col, \"$.path\")",
+          "codigo_pyspark": "from pyspark.sql.functions import from_json, get_json_object\nfrom pyspark.sql.types import StructType, StringType, IntegerType\n\n# BAD: Parses JSON string 3 times per row\ndf.select(\n    get_json_object(\"json_payload\", \"$.user.age\"),\n    get_json_object(\"json_payload\", \"$.user.name\"),\n    get_json_object(\"json_payload\", \"$.user.city\")\n)\n\n# GOOD: Parses once into a native Struct\nschema = StructType() \\\n    .add(\"age\", IntegerType()) \\\n    .add(\"name\", StringType()) \\\n    .add(\"city\", StringType())\n\ndf.withColumn(\"user_struct\", from_json(\"json_payload\", schema)) \\\n  .select(\"user_struct.*\")",
+          "diagrama_mermaid": "graph LR\n    subgraph get_json_object\n        J[Raw JSON String] -->|Parse| E1[Extract A]\n        J -->|Parse again| E2[Extract B]\n    end\n    subgraph from_json\n        J2[Raw JSON String] -->|Parse once| S[Native Spark Struct (RAM)]\n        S --> EA[Access A instantly]\n        S --> EB[Access B instantly]\n    end",
+          "tags": [
+            "json",
+            "parsing",
+            "structs",
+            "from_json"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "execution_internals",
+      "title": "Execution & Shuffle Internals",
+      "icon": "⚙️",
+      "description": "Under the hood of Spark Execution Engine. Understanding Tungsten, memory management, and task speculation.",
+      "entries": [
+        {
+          "id": "speculative_execution",
+          "title": "Speculative Execution",
+          "subtitle": "Dealing with Stragglers",
+          "description": "If a node in your cluster is struggling (failing disk, network issue), a single task might take 10x longer than the rest (a straggler). Speculative execution notices this and launches a duplicate task on a healthy node. The first one to finish wins.",
+          "when_to_use": "Turn it on (spark.speculation=true) in unreliable cloud environments or heterogeneous clusters. Be careful if your tasks write to an external database (idempotency is required!).",
+          "syntax": "spark.conf.set(\"spark.speculation\", \"true\")",
+          "codigo_pyspark": "# To configure speculation thresholds:\nspark.conf.set(\"spark.speculation\", \"true\")\nspark.conf.set(\"spark.speculation.multiplier\", \"1.5\") # 1.5x slower than median\nspark.conf.set(\"spark.speculation.quantile\", \"0.75\")  # Triggers when 75% of tasks are done",
+          "diagrama_mermaid": "graph LR\n    subgraph Normal Tasks\n        T1[Task 1: 10s] --> Done1((Done))\n        T2[Task 2: 12s] --> Done2((Done))\n    end\n    subgraph Straggler\n        T3[Task 3: 50s...] --> Failed((Killed))\n    end\n    subgraph Speculative\n        S3[Task 3 Copy: 11s] --> Done3((Done))\n    end\n    T1 ~~~ T3\n    T3 -.->|Detected as slow| S3",
+          "tags": [
+            "execution",
+            "speculation",
+            "performance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "optimizations_extra",
+      "title": "Advanced Optimization Tuning",
+      "icon": "🏎️",
+      "description": "Manual dials to tune Spark when Auto mechanisms (like AQE) are not enough or when statistics are missing.",
+      "entries": [
+        {
+          "id": "broadcast_hints",
+          "title": "Join Hints",
+          "subtitle": "Overriding the Catalyst Optimizer",
+          "description": "Sometimes Spark lacks accurate statistics (e.g. reading from a messy data lake) and fails to realize a table is small enough to broadcast. A Broadcast Hint forces Spark to use a BroadcastHashJoin.",
+          "when_to_use": "When you identify a slow SortMergeJoin in the UI and you KNOW one side fits easily in executor memory (< 1GB typically, though default threshold is 10MB).",
+          "syntax": "df.hint(\"broadcast\")",
+          "codigo_pyspark": "from pyspark.sql.functions import broadcast\n\n# Old way:\ndf_joined = large_df.join(broadcast(small_df), \"key\")\n\n# New way (Hints):\ndf_joined = large_df.join(small_df.hint(\"broadcast\"), \"key\")\n\n# Other hints:\ndf.hint(\"merge\")        # Forces SortMergeJoin\ndf.hint(\"shuffle_hash\") # Forces ShuffleHashJoin",
+          "tags": [
+            "hints",
+            "broadcast",
+            "join",
+            "optimization"
+          ]
+        },
+        {
+          "id": "max_partition_bytes",
+          "title": "Files & maxPartitionBytes",
+          "subtitle": "Tuning Read Partitions",
+          "description": "When reading hundreds of tiny CSV/JSON files, Spark will map 1 file to 1 partition, causing overhead. You can use spark.sql.files.maxPartitionBytes (default 128MB) to pack multiple tiny files into a single partition at READ time.",
+          "when_to_use": "If your read stage has thousands of tasks taking 10ms each, you suffer from tiny-file syndrome. Increase maxPartitionBytes or use file packing.",
+          "syntax": "spark.conf.set(\"spark.sql.files.maxPartitionBytes\", \"134217728\")",
+          "codigo_pyspark": "# The default is 128MB. \n# If you have 10,000 files of 1MB, Spark packs ~128 files per partition.\nprint(spark.conf.get(\"spark.sql.files.maxPartitionBytes\"))\n\n# If you have a cluster with huge RAM and want fewer, larger partitions:\nspark.conf.set(\"spark.sql.files.maxPartitionBytes\", \"256mb\")",
+          "tags": [
+            "files",
+            "partitions",
+            "optimization",
+            "io"
+          ]
+        }
+      ]
+    }
+  ]
+}

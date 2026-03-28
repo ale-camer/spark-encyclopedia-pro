@@ -1,0 +1,544 @@
+{
+  "metadata": {
+    "titulo": "Decision Architecture — Apache Spark Pipeline Design",
+    "version": "2.0",
+    "descripcion": "Navigable decision graph for Spark pipeline design. Maximum 4 hierarchical levels. Priority: structural clarity, not theoretical completeness.",
+    "nivel_audiencia": "intermediate",
+    "convenciones": {
+      "tipos_nodo": {
+        "decision": "Point where the designer must choose between options",
+        "problema": "Situation or constraint conditioning later decisions",
+        "concepto": "Principle or mechanism whose understanding affects decisions"
+      },
+      "tipos_enlace": {
+        "causa_efecto": "A produces or triggers B",
+        "restriccion": "A limits or conditions B's option space",
+        "mitigacion": "A reduces or solves B's impact",
+        "habilitador": "A is a necessary condition to consider B",
+        "determinante": "A's value directly determines B's value",
+        "disparador": "The presence of A activates the need to decide B",
+        "riesgo_ejecucion": "A can degrade B's runtime performance"
+      }
+    }
+  },
+
+  "nodos": [
+
+    {
+      "id": "root",
+      "nombre": "Spark pipeline design",
+      "tipo": "concepto",
+      "nivel": 1,
+      "pregunta_guia": null,
+      "subdecisiones": [
+        "contexto",
+        "datos",
+        "transformaciones",
+        "ejecucion",
+        "optimizacion"
+      ],
+      "dependencias": []
+    },
+
+    {
+      "id": "contexto",
+      "nombre": "Problem Context",
+      "tipo": "problema",
+      "nivel": 2,
+      "pregunta_guia": "What does this pipeline need to solve and under what operational constraints?",
+      "subdecisiones": [
+        "modo_procesamiento",
+        "slas_latencia"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "modo_procesamiento",
+      "nombre": "Batch vs Streaming",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Do data arrive in discrete batches or as a continuous stream?",
+      "subdecisiones": [
+        "modo_streaming"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "modo_streaming",
+      "nombre": "Micro-batch vs Continuous Processing",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "What is the minimum acceptable latency: seconds (micro-batch) or ms (continuous)?",
+      "subdecisiones": [],
+      "dependencias": [
+        "slas_latencia"
+      ]
+    },
+    {
+      "id": "slas_latencia",
+      "nombre": "SLAs and Latency Goals",
+      "tipo": "problema",
+      "nivel": 3,
+      "pregunta_guia": "Are there defined SLAs? What is the maximum acceptable latency?",
+      "subdecisiones": [
+        "trade_latency_throughput"
+      ],
+      "dependencias": [
+        "modo_procesamiento"
+      ]
+    },
+    {
+      "id": "trade_latency_throughput",
+      "nombre": "Trade-off: Latency vs Throughput",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Do I optimize per-event response speed (latency) or total volume processed (throughput)?",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+
+    {
+      "id": "datos",
+      "nombre": "Data Characteristics",
+      "tipo": "problema",
+      "nivel": 2,
+      "pregunta_guia": "Which data properties shape the processing strategy?",
+      "subdecisiones": [
+        "tamano_datos",
+        "distribucion_datos",
+        "formato_datos"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "tamano_datos",
+      "nombre": "Dataset Size",
+      "tipo": "problema",
+      "nivel": 3,
+      "pregunta_guia": "What is the order of magnitude? MB, GB, TB?",
+      "subdecisiones": [
+        "candidato_broadcast"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "candidato_broadcast",
+      "nombre": "Does the dataset fit in memory for Broadcast?",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the small table fit within spark.sql.autoBroadcastJoinThreshold (default 10MB)?",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+    {
+      "id": "distribucion_datos",
+      "nombre": "Data Distribution",
+      "tipo": "problema",
+      "nivel": 3,
+      "pregunta_guia": "Are the data balanced across partitions or are there dominant keys?",
+      "subdecisiones": [
+        "data_skew"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "data_skew",
+      "nombre": "Data Skew Detection and Handling",
+      "tipo": "problema",
+      "nivel": 4,
+      "pregunta_guia": "Are there significantly larger partitions? Are there keys with extreme cardinality?",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+    {
+      "id": "formato_datos",
+      "nombre": "Storage Format",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Does the format support columnar read, efficient compression and partition pruning?",
+      "subdecisiones": [
+        "pushdown_lectura"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "pushdown_lectura",
+      "nombre": "Predicate / Projection Pushdown",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Can filters and column selection be pushed down to the storage level before reading to memory?",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+
+    {
+      "id": "transformaciones",
+      "nombre": "Transformation Types",
+      "tipo": "problema",
+      "nivel": 2,
+      "pregunta_guia": "Which transformation category dominates? Does it generate shuffle?",
+      "subdecisiones": [
+        "diseno_joins",
+        "agregaciones",
+        "operaciones_ventana"
+      ],
+      "dependencias": [
+        "datos"
+      ]
+    },
+    {
+      "id": "diseno_joins",
+      "nombre": "Join Design",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Which physical join strategy minimizes shuffle given data size and distribution?",
+      "subdecisiones": [
+        "estrategia_fisica_join"
+      ],
+      "dependencias": [
+        "tamano_datos",
+        "distribucion_datos"
+      ]
+    },
+    {
+      "id": "estrategia_fisica_join",
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "BHJ if table is small. SHJ if data fits in memory. SMJ (default) if data is large and sortable.",
+      "subdecisiones": [],
+      "dependencias": [
+        "candidato_broadcast",
+        "data_skew"
+      ],
+      "codigo_pyspark": "from pyspark.sql.functions import broadcast\n\n# Spark broadcasts automatically if table < 10MB\n# You can force it using the broadcast() function\n\njoined_df = big_df.join(broadcast(small_df), \"id\")",
+      "salida_consola": "== Physical Plan ==\n*(2) BroadcastHashJoin [id#10], [id#22], Inner, BuildRight\n:- *(2) Project [id#10, value_a#11]\n:  +- *(2) Filter isnotnull(id#10)\n:     +- *(2) FileScan parquet db.big_table ...\n+- BroadcastExchange HashedRelationBroadcastMode(...), [plan_id=32]\n   +- *(1) Project [id#22, value_b#23]\n      +- *(1) Filter isnotnull(id#22)\n         +- *(1) FileScan parquet db.small_table ...",
+      "diagrama_mermaid": "graph TD\n    D[Driver Node] -->|Sends small copy 10MB| M1\n    D -->|Sends small copy 10MB| M2\n    subgraph S1 [Executor 1 Node]\n        M1[(Memory: Small Table)]\n        T1[Task: Read Big Table local] --> J1{Hash Join}\n        M1 --> J1\n    end\n    subgraph S2 [Executor 2 Node]\n        M2[(Memory: Small Table)]\n        T2[Task: Read Big Table local] --> J2{Hash Join}\n        M2 --> J2\n    end"
+    },
+    {
+      "id": "agregaciones",
+      "nombre": "Aggregations and GroupBy",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Can the aggregation be fully pre-aggregated within each partition before shuffle?",
+      "subdecisiones": [
+        "hash_vs_sort_aggregate"
+      ],
+      "dependencias": [
+        "distribucion_datos"
+      ]
+    },
+    {
+      "id": "hash_vs_sort_aggregate",
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Hash Aggregate is faster but requires the group to fit in memory. Sort Aggregate is spill-safe.",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+    {
+      "id": "operaciones_ventana",
+      "nombre": "Window Operations",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Does the business logic require calculations over sorted data partitions (ranking, lag)?",
+      "subdecisiones": [
+        "particionado_ventana"
+      ],
+      "dependencias": [
+        "distribucion_datos"
+      ]
+    },
+    {
+      "id": "particionado_ventana",
+      "nombre": "Window partitionBy Strategy",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the window partition key generate balanced distribution or amplify skew?",
+      "subdecisiones": [],
+      "dependencias": [
+        "data_skew"
+      ]
+    },
+
+    {
+      "id": "ejecucion",
+      "nombre": "Execution Implications",
+      "tipo": "concepto",
+      "nivel": 2,
+      "pregunta_guia": "How are transformations materialized in the DAG stages? What bottlenecks do they generate?",
+      "subdecisiones": [
+        "impacto_shuffle",
+        "analisis_dag"
+      ],
+      "dependencias": [
+        "transformaciones"
+      ]
+    },
+    {
+      "id": "impacto_shuffle",
+      "nombre": "Shuffle Generation",
+      "tipo": "problema",
+      "nivel": 3,
+      "pregunta_guia": "How many stage boundaries does the pipeline introduce? How much data moves across the network?",
+      "subdecisiones": [
+        "config_particiones_shuffle"
+      ],
+      "dependencias": [
+        "diseno_joins",
+        "agregaciones",
+        "operaciones_ventana"
+      ]
+    },
+    {
+      "id": "config_particiones_shuffle",
+      "nombre": "Tuning spark.sql.shuffle.partitions",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the number of partitions yield ~100-200MB blocks? Is it too high (overhead) or too low (spill)?",
+      "subdecisiones": [],
+      "dependencias": [
+        "tamano_datos"
+      ]
+    },
+    {
+      "id": "analisis_dag",
+      "nombre": "DAG Stage Analysis",
+      "tipo": "concepto",
+      "nivel": 3,
+      "pregunta_guia": "Does the DAG have redundant stages? Is an intermediate DataFrame reused multiple times?",
+      "subdecisiones": [
+        "recomputo_dataframe"
+      ],
+      "dependencias": [
+        "impacto_shuffle"
+      ]
+    },
+    {
+      "id": "recomputo_dataframe",
+      "nombre": "Is the same DataFrame re-evaluated in multiple actions?",
+      "tipo": "problema",
+      "nivel": 4,
+      "pregunta_guia": "If a DataFrame triggers multiple action branches in the DAG without being persisted, it's fully recomputed each time.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# A complex DF taking a long time to compute\nexpensive_df = df.groupBy(\"category\").agg({...})\n\n# ACTION 1: Spark evaluates entire lineage from start\nexpensive_df.count()\n\n# ACTION 2: Spark computes lineage from the start AGAIN without cache!\nexpensive_df.write.parquet(\"/path/\")",
+      "diagrama_mermaid": "graph TD\n    subgraph Action 1\n        R1[Read Parquet] --> G1[GroupBy/Shuffle] --> C1[Count Action]\n    end\n    subgraph Action 2\n        R2[Read Parquet] --> G2[GroupBy/Shuffle] --> W1[Write Parquet Action]\n    end\n    style R1 fill:#581c87,stroke:#9333ea\n    style R2 fill:#581c87,stroke:#9333ea\n    style G1 fill:#581c87,stroke:#9333ea\n    style G2 fill:#581c87,stroke:#9333ea"
+    },
+
+    {
+      "id": "optimizacion",
+      "nombre": "Optimization Strategies",
+      "tipo": "decision",
+      "nivel": 2,
+      "pregunta_guia": "Which techniques apply to reduce shuffle, avoid recomputation and manage memory efficiently?",
+      "subdecisiones": [
+        "control_particiones",
+        "persistencia",
+        "aqe"
+      ],
+      "dependencias": [
+        "ejecucion"
+      ]
+    },
+    {
+      "id": "control_particiones",
+      "nombre": "Physical Partition Control",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is there a need to redistribute data for load balancing or to reduce output files?",
+      "subdecisiones": [
+        "repartition_vs_coalesce"
+      ],
+      "dependencias": [
+        "impacto_shuffle",
+        "tamano_datos"
+      ]
+    },
+    {
+      "id": "repartition_vs_coalesce",
+      "nombre": "Repartition vs Coalesce",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Repartition: generates shuffle, balances. Coalesce: no shuffle, only reduces partitions without redistributing.",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+    {
+      "id": "persistencia",
+      "nombre": "Intermediate DataFrame Persistence",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is it worth materializing this intermediate DataFrame to avoid costly recomputation?",
+      "subdecisiones": [
+        "cache_vs_checkpoint"
+      ],
+      "dependencias": [
+        "recomputo_dataframe"
+      ]
+    },
+    {
+      "id": "cache_vs_checkpoint",
+      "nombre": "Cache vs Checkpoint",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Cache: fast, keeps lineage. Checkpoint: truncates the DAG lineage, writes to disk, more robust.",
+      "subdecisiones": [],
+      "dependencias": []
+    },
+    {
+      "id": "aqe",
+      "nombre": "Adaptive Query Execution (AQE)",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is AQE enabled (Spark 3+)? What automatic optimizations does it offer for this pipeline?",
+      "subdecisiones": [
+        "capacidades_aqe"
+      ],
+      "dependencias": [
+        "impacto_shuffle",
+        "data_skew"
+      ]
+    },
+    {
+      "id": "capacidades_aqe",
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "tipo": "concepto",
+      "nivel": 4,
+      "pregunta_guia": "AQE can change the execution plan entirely at runtime: coalesces post-shuffle, converts to broadcast and splits skewed partitions.",
+      "subdecisiones": [],
+      "dependencias": []
+    }
+
+  ],
+
+  "enlaces_transversales": [
+    {
+      "id": "e01",
+      "origen": "modo_procesamiento",
+      "destino": "slas_latencia",
+      "tipo": "restriccion",
+      "descripcion": "The chosen processing mode defines the achievable latency range. Batch cannot guarantee sub-minute latencies."
+    },
+    {
+      "id": "e02",
+      "origen": "tamano_datos",
+      "destino": "candidato_broadcast",
+      "tipo": "determinante",
+      "descripcion": "Dataset size directly dictates if Broadcast Join applies. Above the threshold, it is ruled out."
+    },
+    {
+      "id": "e03",
+      "origen": "candidato_broadcast",
+      "destino": "estrategia_fisica_join",
+      "tipo": "habilitador",
+      "descripcion": "If the dataset meets the broadcast threshold, BHJ is the optimal choice by default."
+    },
+    {
+      "id": "e04",
+      "origen": "distribucion_datos",
+      "destino": "data_skew",
+      "tipo": "causa_efecto",
+      "descripcion": "An unbalanced key distribution produces unequally sized partitions, manifesting as Data Skew."
+    },
+    {
+      "id": "e05",
+      "origen": "data_skew",
+      "destino": "estrategia_fisica_join",
+      "tipo": "riesgo_ejecucion",
+      "descripcion": "Data Skew acts severely upon Sort Merge Join: a single partition concentrates most of the workload."
+    },
+    {
+      "id": "e06",
+      "origen": "data_skew",
+      "destino": "capacidades_aqe",
+      "tipo": "mitigacion",
+      "descripcion": "With AQE enabled, the Skew Join optimizer splits overloaded partitions at runtime automatically."
+    },
+    {
+      "id": "e07",
+      "origen": "data_skew",
+      "destino": "particionado_ventana",
+      "tipo": "riesgo_ejecucion",
+      "descripcion": "If a window function's partition key matches a skewed key, the corresponding executor will overload."
+    },
+    {
+      "id": "e08",
+      "origen": "diseno_joins",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "Any join other than BHJ introduces a stage boundary and a full shuffle operation."
+    },
+    {
+      "id": "e09",
+      "origen": "agregaciones",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "groupBy/agg operations inherently generate shuffle to gather identical rows from different partitions."
+    },
+    {
+      "id": "e10",
+      "origen": "operaciones_ventana",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "Window functions trigger shuffle in order to partition and sort data."
+    },
+    {
+      "id": "e11",
+      "origen": "tamano_datos",
+      "destino": "config_particiones_shuffle",
+      "tipo": "determinante",
+      "descripcion": "The post-shuffle data volume dictates the optimal number of partitions to maintain blocks of ~128-200MB."
+    },
+    {
+      "id": "e12",
+      "origen": "impacto_shuffle",
+      "destino": "capacidades_aqe",
+      "tipo": "habilitador",
+      "descripcion": "AQE acts at shuffle materialization points, dynamically adjusting the resulting number of partitions."
+    },
+    {
+      "id": "e13",
+      "origen": "recomputo_dataframe",
+      "destino": "persistencia",
+      "tipo": "disparador",
+      "descripcion": "If an intermediate DF acts as source for multiple actions, the expensive recomputation triggers the need to persist it."
+    },
+    {
+      "id": "e14",
+      "origen": "formato_datos",
+      "destino": "pushdown_lectura",
+      "tipo": "habilitador",
+      "descripcion": "Columnar formats (Parquet, ORC) natively support projection pushdown. File formats (CSV, JSON) do not."
+    },
+    {
+      "id": "e15",
+      "origen": "pushdown_lectura",
+      "destino": "tamano_datos",
+      "tipo": "mitigacion",
+      "descripcion": "Effective pushdown trims the volume of data read into memory, alleviating size limits for downstream decisions."
+    },
+    {
+      "id": "e16",
+      "origen": "impacto_shuffle",
+      "destino": "control_particiones",
+      "tipo": "disparador",
+      "descripcion": "Excessive shuffle or unbalanced partitions prompts the need for physical control (repartition/coalesce)."
+    },
+    {
+      "id": "e17",
+      "origen": "slas_latencia",
+      "destino": "persistencia",
+      "tipo": "restriccion",
+      "descripcion": "Strict SLAs may strictly prohibit checkpoints (disk writes) due to the inherent additional latency."
+    },
+    {
+      "id": "e18",
+      "origen": "trade_latency_throughput",
+      "destino": "config_particiones_shuffle",
+      "tipo": "determinante",
+      "descripcion": "Prioritizing throughput implies more partitions (parallelism). Latency requires fewer tasks and overhead."
+    }
+  ]
+}

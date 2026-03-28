@@ -1,0 +1,798 @@
+{
+  "metadata": {
+    "titulo": "Decision Architecture — Apache Spark Pipeline Design",
+    "version": "3.0",
+    "descripcion": "Navigable decision graph for Spark pipeline design. Maximum 4 hierarchical levels.",
+    "nivel_audiencia": "intermediate"
+  },
+  "nodos": [
+    {
+      "id": "root",
+      "nombre": "Spark Pipeline Design",
+      "tipo": "concept",
+      "nivel": 1,
+      "pregunta_guia": null,
+      "subdecisiones": [
+        "infraestructura_cluster",
+        "contexto",
+        "datos",
+        "transformaciones",
+        "ejecucion",
+        "optimization"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "contexto",
+      "nombre": "Problem Context",
+      "tipo": "problem",
+      "nivel": 2,
+      "pregunta_guia": "What does this pipeline need to solve and under what operational constraints?",
+      "subdecisiones": [
+        "modo_procesamiento",
+        "slas_latencia"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "modo_procesamiento",
+      "nombre": "Batch vs Streaming",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Do data arrive in discrete batches or as a continuous stream?",
+      "subdecisiones": [
+        "modo_streaming"
+      ],
+      "dependencias": [],
+      "codigo_pyspark": "# --- BATCH MODE ---\nbatch_df = spark.read.parquet(\"s3://datalake/events/\")\nresult = batch_df.groupBy(\"user_id\").count()\nresult.write.parquet(\"s3://output/counts/\")\n\n# --- STREAMING MODE ---\nfrom pyspark.sql.types import StructType, StringType, TimestampType\n\nschema = StructType() \\\n  .add(\"user_id\", StringType()) \\\n  .add(\"event\", StringType()) \\\n  .add(\"ts\", TimestampType())\n\nstreaming_df = spark.readStream \\\n  .schema(schema) \\\n  .json(\"s3://landing/\")\n\nstreaming_df.writeStream \\\n  .outputMode(\"append\") \\\n  .format(\"parquet\") \\\n  .option(\"checkpointLocation\", \"s3://checkpoints/\") \\\n  .start()",
+      "diagrama_mermaid": "graph LR\n    subgraph Batch\n        S1[(S3 Datalake)] --> R[spark.read]\n        R --> T[Transform]\n        T --> W[spark.write]\n    end\n    subgraph Streaming\n        K[(Kafka / Files)] --> RS[spark.readStream]\n        RS --> TS[Transform]\n        TS --> WS[spark.writeStream]\n        WS -->|trigger every Xs| WS\n    end"
+    },
+    {
+      "id": "modo_streaming",
+      "nombre": "Micro-batch vs Continuous Processing",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "What is the minimum acceptable latency: seconds (micro-batch) or milliseconds (continuous)?",
+      "subdecisiones": [
+        "manejo_estado",
+        "modos_salida_streaming"
+      ],
+      "dependencias": [
+        "slas_latencia"
+      ],
+      "codigo_pyspark": "# MICRO-BATCH: Default — triggers every N seconds\nquery = df.writeStream \\\n  .trigger(processingTime='30 seconds') \\\n  .format(\"memory\") \\\n  .queryName(\"events\") \\\n  .start()\n\n# CONTINUOUS: Sub-millisecond latency (Experimental in Spark 3.x)\nquery = df.writeStream \\\n  .trigger(continuous='1 second') \\\n  .format(\"kafka\") \\\n  .option(\"kafka.bootstrap.servers\", \"host:9092\") \\\n  .start()",
+      "diagrama_mermaid": "graph TD\n    subgraph Micro-Batch Model\n        MB1[Batch 1: t=0s to t=30s] --> MB2[Batch 2: t=30s to t=60s]\n        MB2 --> MB3[Batch 3: ...]\n    end\n    subgraph Continuous Model\n        C1[Worker 1: Reading record-by-record]\n        C2[Worker 2: Reading record-by-record]\n        C1 --- C2\n    end"
+    },
+    {
+      "id": "slas_latencia",
+      "nombre": "SLAs and Latency Goals",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "Are there defined SLAs? What is the maximum acceptable processing latency?",
+      "subdecisiones": [
+        "trade_latency_throughput"
+      ],
+      "dependencias": [
+        "modo_procesamiento"
+      ],
+      "salida_consola": "# Monitoring a streaming query SLA breach\nquery.awaitTermination()\n\n>>> WARN StreamingQueryManager: Processing rate (50 events/s)\n    falls below input rate (800 events/s).\n    Potential SLA breach detected. Query: events_pipeline\n\n>>> query.lastProgress\n{\n  'batchId': 42,\n  'inputRowsPerSecond': 800.0,\n  'processedRowsPerSecond': 50.0,   # <-- BOTTLENECK\n  'durationMs': { 'triggerExecution': 28500 }\n}"
+    },
+    {
+      "id": "trade_latency_throughput",
+      "nombre": "Trade-off: Latency vs Throughput",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Do I optimize per-event response speed (latency) or total volume processed (throughput)?",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# MAXIMIZE THROUGHPUT: Larger batches, more parallelism\nspark.conf.set(\"spark.sql.shuffle.partitions\", \"800\")\nspark.conf.set(\"spark.streaming.kafka.maxRatePerPartition\", \"5000\")\n\n# MINIMIZE LATENCY: Smaller triggers, fewer partitions, continuous mode\nspark.conf.set(\"spark.sql.shuffle.partitions\", \"4\")\nquery = df.writeStream.trigger(continuous='100 milliseconds').start()",
+      "diagrama_mermaid": "graph LR\n    A[\"Optimize for LATENCY\\n(fast per-event response)\\nSmall batches, few partitions\"] \n    B[\"Optimize for THROUGHPUT\\n(max records/second)\\nLarge batches, many partitions\"]\n    A -->|Trade-off axis| B"
+    },
+    {
+      "id": "datos",
+      "nombre": "Data Characteristics",
+      "tipo": "problem",
+      "nivel": 2,
+      "pregunta_guia": "Which data properties shape the processing strategy?",
+      "subdecisiones": [
+        "tamano_datos",
+        "distribucion_datos",
+        "formato_datos",
+        "gobernanza_datos"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "tamano_datos",
+      "nombre": "Dataset Size",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "What is the order of magnitude? MB, GB, TB?",
+      "subdecisiones": [
+        "candidato_broadcast"
+      ],
+      "dependencias": [],
+      "codigo_pyspark": "# Estimate partition count and rough size\nnum_partitions = df.rdd.getNumPartitions()\nprint(f\"Current partitions: {num_partitions}\")\n\n# Rough byte estimate (use Spark UI for accurate sizes)\nfrom pyspark.sql.functions import spark_partition_id, count\ndf.groupBy(spark_partition_id()).agg(count(\"*\").alias(\"rows_per_partition\")).show()",
+      "salida_consola": "Current partitions: 200\n\n+--------------------+------------------+\n|SPARK_PARTITION_ID()|rows_per_partition|\n+--------------------+------------------+\n|                   0|             12400|\n|                   1|             11980|\n|                   2|             12100|\n|                 ...|               ...|\n+--------------------+------------------+\nRule of thumb: target ~128MB per partition after shuffle."
+    },
+    {
+      "id": "candidato_broadcast",
+      "nombre": "Does the Dataset Fit in Memory for Broadcast?",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the small table fit within spark.sql.autoBroadcastJoinThreshold (default 10MB)?",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# Check default threshold\nprint(spark.conf.get(\"spark.sql.autoBroadcastJoinThreshold\"))  # 10485760 (10MB)\n\n# Increase threshold if you have RAM and a slightly larger dimension table\nspark.conf.set(\"spark.sql.autoBroadcastJoinThreshold\", str(50 * 1024 * 1024))  # 50MB\n\n# Force broadcast explicitly regardless of threshold\nfrom pyspark.sql.functions import broadcast\njoined = big_df.join(broadcast(small_df), \"id\")",
+      "diagrama_mermaid": "graph TD\n    D[Driver] -->|Collects full table into memory| Mem[(Driver RAM: small_df)]\n    D -->|Broadcasts copy over network| E1[Executor 1]\n    D -->|Broadcasts copy over network| E2[Executor 2]\n    D -->|Broadcasts copy over network| E3[Executor 3]\n    E1 -->|Local Hash Join (no shuffle)| R1[Result]\n    E2 -->|Local Hash Join (no shuffle)| R2[Result]\n    E3 -->|Local Hash Join (no shuffle)| R3[Result]"
+    },
+    {
+      "id": "distribucion_datos",
+      "nombre": "Data Distribution",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "Are the data balanced across partitions or are there dominant keys?",
+      "subdecisiones": [
+        "data_skew"
+      ],
+      "dependencias": [],
+      "codigo_pyspark": "from pyspark.sql.functions import spark_partition_id, count\n\n# Inspect partition balance\ndf.groupBy(spark_partition_id()) \\\n  .agg(count(\"*\").alias(\"record_count\")) \\\n  .orderBy(\"record_count\", ascending=False) \\\n  .show(5)",
+      "salida_consola": "+--------------------+------------+\n|SPARK_PARTITION_ID()|record_count|\n+--------------------+------------+\n|                 142|      998500|  <-- SKEWED!\n|                   0|         420|\n|                   1|         390|\n|                   2|         380|\n|                   3|         410|\n+--------------------+------------+\nPartition 142 is 2000x larger than the others."
+    },
+    {
+      "id": "data_skew",
+      "nombre": "Data Skew Detection and Handling",
+      "tipo": "problem",
+      "nivel": 4,
+      "pregunta_guia": "Are there significantly larger partitions? Are there keys with extreme cardinality?",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "from pyspark.sql.functions import rand, concat, lit\n\n# Step 1: Identify skewed key\ndf.groupBy(\"country\").count().orderBy(\"count\", ascending=False).show(5)\n\n# Step 2: Salt the skewed key to spread the load\nSALT_FACTOR = 10\ndf_salted = df.withColumn(\"salt\", (rand() * SALT_FACTOR).cast(\"int\")) \\\n              .withColumn(\"salted_key\", concat(\"country\", lit(\"_\"), \"salt\"))\n\n# Step 3: Also replicate the smaller side\nfrom pyspark.sql.functions import explode, array\nsmall_df_replicated = small_df.withColumn(\"salt\", explode(array([lit(i) for i in range(SALT_FACTOR)]))) \\\n                               .withColumn(\"salted_key\", concat(\"country\", lit(\"_\"), \"salt\"))\n\nresult = df_salted.join(small_df_replicated, \"salted_key\")",
+      "diagrama_mermaid": "graph TD\n    subgraph Without Salting\n        K1[Key: USA x 1M rows] --> P1[(Executor 1: 1M rows - OVERLOADED)]\n        K2[Key: ARG x 100 rows] --> P2[(Executor 2: 100 rows - IDLE)]\n    end\n    subgraph With Salting\n        KS1[Key: USA_0 x 100k] --> PS1[(Executor 1: 100k rows)]\n        KS2[Key: USA_1 x 100k] --> PS2[(Executor 2: 100k rows)]\n        KS3[Key: USA_2 x 100k] --> PS3[(Executor 3: 100k rows)]\n    end"
+    },
+    {
+      "id": "formato_datos",
+      "nombre": "Storage Format",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Does the format support columnar read, efficient compression and partition pruning?",
+      "subdecisiones": [
+        "pushdown_lectura"
+      ],
+      "dependencias": [],
+      "codigo_pyspark": "# CSV: Row-based, no schema enforcement, slow\ndf_csv = spark.read.option(\"header\", True).csv(\"data.csv\")\n\n# Parquet: Columnar, schema embedded, snappy compression by default\ndf_parquet = spark.read.parquet(\"data.parquet\")\n\n# Delta Lake: Parquet + ACID + time travel\ndf_delta = spark.read.format(\"delta\").load(\"s3://delta-table/\")\n\n# Write as Parquet with partitioning for pruning\ndf.write.partitionBy(\"year\", \"month\").parquet(\"s3://output/\")",
+      "salida_consola": "# Time to read 10GB with schema:\nCSV:     42.3s  (reads all columns, no stats)\nParquet: 3.1s   (reads only needed columns, uses min/max)\nDelta:   2.8s   (Parquet + data skipping index)",
+      "reference_section_id": "storage_and_pushdown"
+    },
+    {
+      "id": "pushdown_lectura",
+      "nombre": "Predicate / Projection Pushdown",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Can filters and column selection be pushed down to the storage level before reading to memory?",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# Catalyst optimizer pushes filters and column selection to the scan\ndf = spark.read.parquet(\"s3://events/\") \\\n       .select(\"user_id\", \"event_type\", \"ts\") \\\n       .filter(\"event_type = 'purchase' AND ts > '2024-01-01'\")\n\n# Verify pushdown happened\ndf.explain(mode=\"formatted\")",
+      "salida_consola": "== Physical Plan ==\n*(1) Filter (isnotnull(event_type#2) AND (event_type#2 = purchase))\n+- *(1) ColumnarToRow\n   +- FileScan parquet [user_id#1,event_type#2,ts#3]\n         Batched: true,\n         DataFilters: [isnotnull(event_type#2), (event_type#2 = purchase)],\n         Format: Parquet,\n         PushedFilters: [IsNotNull(event_type), EqualTo(event_type,purchase)]\n         ReadSchema: struct<user_id:string,event_type:string,ts:timestamp>\n\n# Only 2 of 47 columns are read from disk. Filter applied before RAM.",
+      "reference_section_id": "storage_and_pushdown"
+    },
+    {
+      "id": "transformaciones",
+      "nombre": "Transformation Types",
+      "tipo": "problem",
+      "nivel": 2,
+      "pregunta_guia": "Which transformation category dominates? Does it generate shuffle?",
+      "subdecisiones": [
+        "diseno_joins",
+        "agregaciones",
+        "operaciones_ventana",
+        "tipos_complejos"
+      ],
+      "dependencias": [
+        "datos"
+      ]
+    },
+    {
+      "id": "diseno_joins",
+      "nombre": "Join Design",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Which physical join strategy minimizes shuffle given data size and distribution?",
+      "subdecisiones": [
+        "estrategia_fisica_join"
+      ],
+      "dependencias": [
+        "tamano_datos",
+        "distribucion_datos"
+      ],
+      "codigo_pyspark": "# Default: Spark chooses automatically based on table stats\ndf = orders.join(customers, \"customer_id\")\n\n# Force a specific strategy using hints\ndf_broadcast = orders.join(customers.hint(\"broadcast\"), \"customer_id\")\ndf_merge     = orders.join(customers.hint(\"merge\"), \"customer_id\")\ndf_shuffle   = orders.join(customers.hint(\"shuffle_hash\"), \"customer_id\")\n\ndf.explain()",
+      "salida_consola": "== Physical Plan ==\n*(5) SortMergeJoin [customer_id#1], [customer_id#22], Inner\n:- *(2) Sort [customer_id#1 ASC]\n:  +- Exchange hashpartitioning(customer_id#1, 200)\n:     +- *(1) FileScan parquet orders\n+- *(4) Sort [customer_id#22 ASC]\n   +- Exchange hashpartitioning(customer_id#22, 200)\n      +- *(3) FileScan parquet customers"
+    },
+    {
+      "id": "estrategia_fisica_join",
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "BHJ if table is small. SHJ if data fits in memory. SMJ (default) if data is large and sortable.",
+      "subdecisiones": [],
+      "dependencias": [
+        "candidato_broadcast",
+        "data_skew"
+      ],
+      "codigo_pyspark": "from pyspark.sql.functions import broadcast\n\n# BHJ: Best when one side < 10MB (no shuffle at all)\njoined_bhj = big_df.join(broadcast(small_df), \"id\")\n\n# SHJ: Both sides fit in memory, builds a hash table\n# Use hint to force\njoined_shj = big_df.join(medium_df.hint(\"shuffle_hash\"), \"id\")\n\n# SMJ: Default for large tables; requires sorted partitions\n# Spark picks this automatically when both sides are large\njoined_smj = df_a.join(df_b, \"id\")",
+      "salida_consola": "== Physical Plan (BroadcastHashJoin) ==\n*(2) BroadcastHashJoin [id#10], [id#22], Inner, BuildRight\n:- *(2) FileScan parquet big_table\n+- BroadcastExchange HashedRelationBroadcastMode\n   +- *(1) FileScan parquet small_table\n\n# Key indicator: 'BroadcastExchange' means no shuffle on big table side!",
+      "diagrama_mermaid": "graph TD\n    D[Driver] -->|Collects + broadcasts small_df| E1\n    D -->|Collects + broadcasts small_df| E2\n    subgraph E1 [Executor 1]\n        M1[(small_df in RAM)] --> J1{Hash Join}\n        T1[Read big_df partition] --> J1\n    end\n    subgraph E2 [Executor 2]\n        M2[(small_df in RAM)] --> J2{Hash Join}\n        T2[Read big_df partition] --> J2\n    end",
+      "reference_section_id": "joins"
+    },
+    {
+      "id": "agregaciones",
+      "nombre": "Aggregations and GroupBy",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Can the aggregation be fully pre-aggregated within each partition before shuffle?",
+      "subdecisiones": [
+        "hash_vs_sort_aggregate"
+      ],
+      "dependencias": [
+        "distribucion_datos"
+      ],
+      "codigo_pyspark": "from pyspark.sql.functions import sum, avg, count, max\n\n# Simple aggregation — Spark uses HashAggregate by default\ndf.groupBy(\"department\") \\\n  .agg(\n    sum(\"salary\").alias(\"total_salary\"),\n    avg(\"age\").alias(\"avg_age\"),\n    count(\"*\").alias(\"headcount\")\n  ).show()",
+      "salida_consola": "== Physical Plan ==\n*(2) HashAggregate(keys=[department#1], functions=[sum(salary#2), avg(age#3), count(1)])\n+- Exchange hashpartitioning(department#1, 200)\n   +- *(1) HashAggregate(keys=[department#1], functions=[partial_sum(salary#2), ...]\n      +- *(1) FileScan parquet [...]\n\n# Two-phase: partial agg per partition => shuffle => final agg",
+      "diagrama_mermaid": "graph LR\n    P1[Partition 1\\nEng:10 Mktg:20] -->|partial_sum| S[Shuffle Exchange]\n    P2[Partition 2\\nEng:30 Mktg:5]  -->|partial_sum| S\n    S --> R1[Reduce Eng: 40]\n    S --> R2[Reduce Mktg: 25]",
+      "reference_section_id": "aggregations"
+    },
+    {
+      "id": "hash_vs_sort_aggregate",
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Hash Aggregate is faster but requires the group to fit in memory. Sort Aggregate is spill-safe.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# Spark chooses automatically, but you can observe via explain()\ndf.groupBy(\"category\").agg(sum(\"amount\")).explain()\n\n# If HashAggregate OOMs, Tungsten falls back to SortAggregate\n# You can also disable hash agg to force sort:\nspark.conf.set(\"spark.sql.execution.useObjectHashAggregateExec\", \"false\")",
+      "salida_consola": "=== HashAggregate Plan ===\n*(2) HashAggregate(keys=[category#1], functions=[sum(amount#2)])\n    Note: Builds HashMap in executor RAM — FAST, but OOM risk with high cardinality\n\n=== SortAggregate Plan (fallback) ===\n*(2) SortAggregate(keys=[category#1 ASC], functions=[sum(amount#2)])\n    Note: Sorts first, then aggregates — spills to disk safely if needed",
+      "reference_section_id": "aggregations"
+    },
+    {
+      "id": "operaciones_ventana",
+      "nombre": "Window Operations",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Does the business logic require calculations over sorted data partitions (ranking, lag, rolling avg)?",
+      "subdecisiones": [
+        "particionado_ventana"
+      ],
+      "dependencias": [
+        "distribucion_datos"
+      ],
+      "codigo_pyspark": "from pyspark.sql.window import Window\nfrom pyspark.sql.functions import row_number, lag, avg\n\n# Rank employees by salary within each department\nwindow_rank = Window.partitionBy(\"department\").orderBy(df[\"salary\"].desc())\ndf = df.withColumn(\"rank\", row_number().over(window_rank))\n\n# Compute 7-day rolling average of daily sales\nwindow_roll = Window.partitionBy(\"store_id\").orderBy(\"date\").rowsBetween(-6, 0)\ndf = df.withColumn(\"rolling_avg_7d\", avg(\"sales\").over(window_roll))",
+      "salida_consola": "== Physical Plan ==\nWindow [row_number() windowspecdefinition(department#1, salary#2 DESC, ...)]\n+- *(2) Sort [department#1 ASC, salary#2 DESC]\n   +- Exchange hashpartitioning(department#1, 200)\n      +- *(1) FileScan parquet [department#1, salary#2]\n\n# Key cost: Exchange (shuffle) + Sort before any window computation can run",
+      "reference_section_id": "window_functions"
+    },
+    {
+      "id": "particionado_ventana",
+      "nombre": "Window partitionBy Strategy",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the window partition key generate balanced distribution or amplify skew?",
+      "subdecisiones": [],
+      "dependencias": [
+        "data_skew"
+      ],
+      "codigo_pyspark": "# BAD: If 90% of rows share the same country, one executor gets overloaded\nwindow_bad = Window.partitionBy(\"country\").orderBy(\"date\")\n\n# BETTER: Sub-partition to spread the load\nwindow_good = Window.partitionBy(\"country\", \"region\").orderBy(\"date\")\n\n# ALSO: For truly unbounded data, consider bucketing at write time\ndf.write.bucketBy(64, \"country\", \"region\").sortBy(\"date\").saveAsTable(\"events_bucketed\")",
+      "diagrama_mermaid": "graph TD\n    subgraph Skewed Window\n    U[All USA rows]   --> EX1[(Executor 1: CRASHED)]\n    AR[All other rows] --> EX2[(Executor 2: IDLE)]\n    end\n    subgraph Balanced Window\n    U1[USA - East]   --> EX3[(Executor 3: OK)]\n    U2[USA - West]   --> EX4[(Executor 4: OK)]\n    U3[USA - Central]--> EX5[(Executor 5: OK)]\n    end"
+    },
+    {
+      "id": "ejecucion",
+      "nombre": "Execution Implications",
+      "tipo": "concept",
+      "nivel": 2,
+      "pregunta_guia": "How are transformations materialized in the DAG stages? What bottlenecks do they generate?",
+      "subdecisiones": [
+        "impacto_shuffle",
+        "analisis_dag",
+        "manejo_rezagados"
+      ],
+      "dependencias": [
+        "transformaciones"
+      ]
+    },
+    {
+      "id": "impacto_shuffle",
+      "nombre": "Shuffle Generation",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "How many stage boundaries does the pipeline introduce? How much data moves across the network?",
+      "subdecisiones": [
+        "config_particiones_shuffle"
+      ],
+      "dependencias": [
+        "diseno_joins",
+        "agregaciones",
+        "operaciones_ventana"
+      ],
+      "codigo_pyspark": "# Each wide transformation creates a stage boundary (shuffle)\ndf1 = df.groupBy(\"a\").count()          # SHUFFLE 1\ndf2 = df1.join(other_df, \"a\")          # SHUFFLE 2\ndf3 = df2.groupBy(\"b\").agg(sum(\"c\"))   # SHUFFLE 3\n\n# Inspect how many exchanges exist\ndf3.explain(mode=\"formatted\")\n\n# Count stages by counting Exchange nodes in the plan",
+      "diagrama_mermaid": "graph TD\n    subgraph Stage 1\n        R1[Read Task 1] --> W1[Write shuffle files]\n        R2[Read Task 2] --> W2[Write shuffle files]\n    end\n    N((Network Exchange))\n    subgraph Stage 2\n        F1[Fetch from all mappers] --> Agg1[Aggregate]\n        F2[Fetch from all mappers] --> Agg2[Aggregate]\n    end\n    W1 --> N\n    W2 --> N\n    N --> F1\n    N --> F2"
+    },
+    {
+      "id": "config_particiones_shuffle",
+      "nombre": "Tuning spark.sql.shuffle.partitions",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Does the number of partitions yield ~100-200MB blocks? Is it too high (overhead) or too low (spill)?",
+      "subdecisiones": [],
+      "dependencias": [
+        "tamano_datos"
+      ],
+      "codigo_pyspark": "# Default is 200 — often wrong for very large or very small datasets\nprint(spark.conf.get(\"spark.sql.shuffle.partitions\"))  # '200'\n\n# Rule of thumb: total_shuffle_bytes / 128MB = target partitions\n# Example: 400GB shuffle -> 400*1024/128 = ~3200 partitions\nspark.conf.set(\"spark.sql.shuffle.partitions\", \"3200\")\n\n# AQE can override this automatically (Spark 3.0+)\nspark.conf.set(\"spark.sql.adaptive.enabled\", \"true\")\nspark.conf.set(\"spark.sql.adaptive.coalescePartitions.enabled\", \"true\")",
+      "salida_consola": "# With 200 partitions on a 400GB shuffle:\nPartition size: ~2GB each => SPILL TO DISK, very slow\n\n# With 3200 partitions on a 400GB shuffle:\nPartition size: ~128MB each => FITS IN MEMORY, optimal\n\n# With AQE enabled + small actual shuffle data:\nAdaptiveSparkPlan coalesced 200 -> 6 partitions at runtime."
+    },
+    {
+      "id": "analisis_dag",
+      "nombre": "DAG Stage Analysis",
+      "tipo": "concept",
+      "nivel": 3,
+      "pregunta_guia": "Does the DAG have redundant stages? Is an intermediate DataFrame reused multiple times?",
+      "subdecisiones": [
+        "recomputo_dataframe"
+      ],
+      "dependencias": [
+        "impacto_shuffle"
+      ],
+      "salida_consola": "# Spark UI: Jobs Tab shows repeated Stage IDs across different job runs.\n# If you see the same FileScan + Exchange stages running twice,\n# that's a sign a DataFrame is being recomputed from scratch.\n\nJob 1: Stage 0 (FileScan) -> Stage 1 (Exchange) -> Stage 2 (Sort)\nJob 2: Stage 0 (FileScan) -> Stage 1 (Exchange) -> Stage 3 (Write)\n       ^--- Repeated! FileScan + Exchange ran twice for the same data."
+    },
+    {
+      "id": "recomputo_dataframe",
+      "nombre": "Is the Same DataFrame Re-evaluated in Multiple Actions?",
+      "tipo": "problem",
+      "nivel": 4,
+      "pregunta_guia": "If a DataFrame triggers multiple action branches in the DAG without being persisted, it is fully recomputed each time.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# expensive_df takes minutes to compute (joins, aggregations, etc.)\nexpensive_df = raw.join(lookup, \"id\").groupBy(\"category\").agg(sum(\"amount\"))\n\n# ACTION 1: Spark evaluates the entire lineage from scratch\nrow_count = expensive_df.count()          # full recompute\n\n# ACTION 2: Spark recomputes the SAME lineage again!\nexpensive_df.write.parquet(\"/output/\")    # full recompute again!\n\n# FIX: Cache before the first action\nexpensive_df.cache()\nrow_count = expensive_df.count()          # compute + store in memory\nexpensive_df.write.parquet(\"/output/\")    # read from cache, instant!",
+      "diagrama_mermaid": "graph TD\n    subgraph Without Cache\n        R1[Read Source] --> J1[Join] --> G1[GroupBy] --> C1[count Action]\n        R2[Read Source] --> J2[Join] --> G2[GroupBy] --> W1[write Action]\n    end\n    subgraph With Cache\n        R3[Read Source] --> J3[Join] --> G3[GroupBy] --> Cache[(Cached in RAM)]\n        Cache --> C2[count]\n        Cache --> W2[write]\n    end\n    style R1 fill:#7f1d1d\n    style R2 fill:#7f1d1d\n    style Cache fill:#14532d"
+    },
+    {
+      "id": "optimization",
+      "nombre": "Optimization Strategies",
+      "tipo": "decision",
+      "nivel": 2,
+      "pregunta_guia": "Which techniques apply to reduce shuffle, avoid recomputation and manage memory efficiently?",
+      "subdecisiones": [
+        "control_particiones",
+        "persistencia",
+        "aqe",
+        "optimizacion_avanzada"
+      ],
+      "dependencias": [
+        "ejecucion"
+      ]
+    },
+    {
+      "id": "control_particiones",
+      "nombre": "Physical Partition Control",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is there a need to redistribute data for load balancing or to reduce output files?",
+      "subdecisiones": [
+        "repartition_vs_coalesce"
+      ],
+      "dependencias": [
+        "impacto_shuffle",
+        "tamano_datos"
+      ],
+      "codigo_pyspark": "# Check current partition count\nprint(f\"Before: {df.rdd.getNumPartitions()} partitions\")\n\n# Reduce for output (fewer files written to S3)\ndf_small = df.coalesce(4)\n\n# Increase and balance for heavy joins\ndf_big = df.repartition(200, \"join_key\")\n\nprint(f\"After coalesce: {df_small.rdd.getNumPartitions()} partitions\")\nprint(f\"After repartition: {df_big.rdd.getNumPartitions()} partitions\")"
+    },
+    {
+      "id": "repartition_vs_coalesce",
+      "nombre": "Repartition vs Coalesce",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Repartition: generates shuffle, balances. Coalesce: no shuffle, only reduces without redistributing.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# COALESCE: Merges local partitions — no network shuffle, only reduces count\n# Use to write fewer output files\ndf.coalesce(10).write.parquet(\"output/\")\n\n# REPARTITION: Full shuffle across network — can increase or decrease, balances data evenly\n# Use before a join on a specific key to co-locate rows\ndf.repartition(200, \"user_id\").join(other_df, \"user_id\")\n\n# Key difference:\n# coalesce(10) on 200 partitions => merges 20 partitions per executor, no network\n# repartition(200) on 10 partitions => sends all data over network, uniform",
+      "diagrama_mermaid": "graph LR\n    subgraph Coalesce - No Network\n        P1[Part 1] --> merged1[Merged Part A]\n        P2[Part 2] --> merged1\n        P3[Part 3] --> merged2[Merged Part B]\n        P4[Part 4] --> merged2\n    end\n    subgraph Repartition - Full Shuffle\n        PA[Old Part 1] --> NET((Network))\n        PB[Old Part 2] --> NET\n        NET --> NA[New Part 1 balanced]\n        NET --> NB[New Part 2 balanced]\n    end"
+    },
+    {
+      "id": "persistencia",
+      "nombre": "Intermediate DataFrame Persistence",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is it worth materializing this intermediate DataFrame to avoid costly recomputation?",
+      "subdecisiones": [
+        "cache_vs_checkpoint"
+      ],
+      "dependencias": [
+        "recomputo_dataframe"
+      ],
+      "codigo_pyspark": "from pyspark import StorageLevel\n\n# cache() = shortcut for MEMORY_AND_DISK\ndf.cache()\n\n# persist() allows more granular control\ndf.persist(StorageLevel.MEMORY_AND_DISK_SER)  # Serialized (less RAM)\ndf.persist(StorageLevel.DISK_ONLY)            # No RAM, always reads from disk\n\n# Trigger materialization with an action\ndf.count()\n\n# Release memory when no longer needed!\ndf.unpersist()\nprint(\"Memory freed.\")",
+      "reference_section_id": "persistence_and_caching"
+    },
+    {
+      "id": "cache_vs_checkpoint",
+      "nombre": "Cache vs Checkpoint",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Cache: fast, keeps lineage. Checkpoint: truncates the DAG lineage, writes to disk, more robust.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "codigo_pyspark": "# CACHE: Stores in executor memory/disk, lineage is preserved\ndf.cache()\ndf.count()  # Materializes the cache\n\n# CHECKPOINT: Writes to HDFS/S3, completely cuts the DAG lineage\n# Essential for long iterative jobs (ML, graph processing)\nspark.sparkContext.setCheckpointDir(\"s3://checkpoints/my-job/\")\ndf_cp = df.checkpoint()  # Synchronous: blocks until data is written\n\n# After checkpoint, Spark forgets all parent stages\ndf_cp.explain()",
+      "salida_consola": "# Plan BEFORE checkpoint (complex):\n*(5) SortMergeJoin ...\\n  *(4) Exchange ... \\n    ... [20 more stages of lineage]\n\n# Plan AFTER checkpoint (clean start):\n*(1) Scan ExistingRDD [col1#0, col2#1, ...]\n    # All previous stages and their potential failures are gone!",
+      "reference_section_id": "persistence_and_caching"
+    },
+    {
+      "id": "aqe",
+      "nombre": "Adaptive Query Execution (AQE)",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Is AQE enabled (Spark 3+)? What automatic optimizations does it offer for this pipeline?",
+      "subdecisiones": [
+        "capacidades_aqe"
+      ],
+      "dependencias": [
+        "impacto_shuffle",
+        "data_skew"
+      ],
+      "codigo_pyspark": "# AQE is ON by default in Spark 3.2+\n# Verify and fine-tune:\nspark.conf.set(\"spark.sql.adaptive.enabled\", \"true\")\nspark.conf.set(\"spark.sql.adaptive.coalescePartitions.enabled\", \"true\")\nspark.conf.set(\"spark.sql.adaptive.skewJoin.enabled\", \"true\")\nspark.conf.set(\"spark.sql.adaptive.advisoryPartitionSizeInBytes\", \"128mb\")\n\n# AQE re-optimizes the plan at each shuffle boundary using real data statistics\n# No code changes needed — it operates transparently behind the scenes",
+      "reference_section_id": "aqe_optimizations"
+    },
+    {
+      "id": "capacidades_aqe",
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "tipo": "concept",
+      "nivel": 4,
+      "pregunta_guia": "AQE can change the execution plan entirely at runtime: coalesces post-shuffle, converts to broadcast and splits skewed partitions.",
+      "subdecisiones": [],
+      "dependencias": [],
+      "salida_consola": "== Physical Plan (AQE active) ==\nAdaptiveSparkPlan isFinalPlan=true\n+- == Final Plan ==\n   BroadcastHashJoin [id#1], [id#22], Inner, BuildRight\n   :- FileScan parquet big_table\n   +- BroadcastExchange\n      +- FileScan parquet medium_table\n\n# AQE observed that 'medium_table' was much smaller than estimated\n# and switched from SortMergeJoin to BroadcastHashJoin at runtime!",
+      "diagrama_mermaid": "graph TD\n    S[Shuffle materializes] -->|AQE reads real sizes| AQE{AQE Optimizer}\n    AQE -->|Many small parts| DC[Dynamic Coalesce\\n200 -> 8 partitions]\n    AQE -->|Small table found| DJ[Switch to BroadcastHashJoin]\n    AQE -->|Skewed partition| SJ[Split Skewed Partition into 10x]",
+      "reference_section_id": "aqe_optimizations"
+    },
+    {
+      "id": "infraestructura_cluster",
+      "nombre": "Cluster Managers",
+      "tipo": "phase",
+      "nivel": 0,
+      "pregunta_guia": "Which resource manager will coordinate the executors? (YARN, K8s, Standalone)",
+      "subdecisiones": [
+        "infra_yarn",
+        "infra_k8s",
+        "infra_standalone"
+      ],
+      "dependencias": []
+    },
+    {
+      "id": "infra_yarn",
+      "nombre": "Hadoop YARN",
+      "tipo": "decision",
+      "nivel": 1,
+      "pregunta_guia": "Classic enterprise choice. Integrated with HDFS and MapReduce ecosystems.",
+      "subdecisiones": [],
+      "dependencias": [
+        "infraestructura_cluster"
+      ],
+      "reference_section_id": "infrastructure"
+    },
+    {
+      "id": "infra_k8s",
+      "nombre": "Kubernetes (K8s)",
+      "tipo": "decision",
+      "nivel": 1,
+      "pregunta_guia": "Modern cloud-native choice. Dockerized executors and isolation.",
+      "subdecisiones": [],
+      "dependencias": [
+        "infraestructura_cluster"
+      ],
+      "reference_section_id": "infrastructure"
+    },
+    {
+      "id": "gestion_memoria",
+      "nombre": "Unified Memory Manager",
+      "tipo": "decision",
+      "nivel": 0,
+      "pregunta_guia": "How will Spark allocate RAM between execution and storage caches?",
+      "subdecisiones": [
+        "memoria_ejecucion",
+        "memoria_storage"
+      ],
+      "dependencias": [],
+      "reference_section_id": "memory_management"
+    },
+    {
+      "id": "manejo_estado",
+      "nombre": "Stateful vs Stateless Streaming",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Do we need to aggregate data across multiple batches (e.g. rolling totals, sessionization)?",
+      "subdecisiones": [
+        "watermarking"
+      ],
+      "dependencias": [
+        "modo_streaming"
+      ],
+      "reference_section_id": "structured_streaming"
+    },
+    {
+      "id": "watermarking",
+      "nombre": "Watermarking (Late Data)",
+      "tipo": "optimization",
+      "nivel": 4,
+      "pregunta_guia": "How long should Spark wait for late-arriving data before clearing state?",
+      "subdecisiones": [],
+      "dependencias": [
+        "manejo_estado"
+      ],
+      "reference_section_id": "structured_streaming"
+    },
+    {
+      "id": "modos_salida_streaming",
+      "nombre": "Output Modes",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "How do we write the aggregated results? Append, Update, or Complete?",
+      "subdecisiones": [],
+      "dependencias": [
+        "modo_streaming"
+      ],
+      "reference_section_id": "structured_streaming"
+    },
+    {
+      "id": "gobernanza_datos",
+      "nombre": "Data Governance & Discovery",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "How will users discover this dataset and who is allowed to access it?",
+      "subdecisiones": [
+        "sistema_catalogo",
+        "control_acceso"
+      ],
+      "dependencias": [
+        "datos"
+      ],
+      "reference_section_id": "data_governance"
+    },
+    {
+      "id": "sistema_catalogo",
+      "nombre": "Catalog System (Hive vs Unity)",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Should we register tables in a central metastore for SQL access and lineage tracking?",
+      "subdecisiones": [],
+      "dependencias": [
+        "gobernanza_datos"
+      ],
+      "reference_section_id": "data_governance"
+    },
+    {
+      "id": "control_acceso",
+      "nombre": "Access Control (ACLs)",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Do we need Fine-Grained Access Control (row/column level) or is storage-level IAM enough?",
+      "subdecisiones": [],
+      "dependencias": [
+        "gobernanza_datos"
+      ],
+      "reference_section_id": "data_governance"
+    },
+    {
+      "id": "tipos_complejos",
+      "nombre": "Complex Data Types",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "Are we working with nested structures (JSON, Maps, Arrays)?",
+      "subdecisiones": [
+        "manejo_arrays",
+        "extraccion_json"
+      ],
+      "dependencias": [
+        "transformaciones"
+      ],
+      "reference_section_id": "complex_types"
+    },
+    {
+      "id": "manejo_arrays",
+      "nombre": "Explode vs Transform",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Do we flatten arrays into rows (explode) or modify them inline (transform SQL HOF)?",
+      "subdecisiones": [],
+      "dependencias": [
+        "tipos_complejos"
+      ],
+      "reference_section_id": "complex_types"
+    },
+    {
+      "id": "extraccion_json",
+      "nombre": "Nested JSON Parsing",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Should we extract single string fields or parse the whole JSON into a Spark Struct?",
+      "subdecisiones": [],
+      "dependencias": [
+        "tipos_complejos"
+      ],
+      "reference_section_id": "complex_types"
+    },
+    {
+      "id": "manejo_rezagados",
+      "nombre": "Speculative Execution",
+      "tipo": "decision",
+      "nivel": 3,
+      "pregunta_guia": "Are some tasks randomly much slower due to hardware issues or bad nodes?",
+      "subdecisiones": [],
+      "dependencias": [
+        "ejecucion"
+      ],
+      "reference_section_id": "execution_internals"
+    },
+    {
+      "id": "optimizacion_avanzada",
+      "nombre": "Advanced Tuning & Hints",
+      "tipo": "problem",
+      "nivel": 3,
+      "pregunta_guia": "Can we manually guide the Catalyst optimizer when statistics fail?",
+      "subdecisiones": [
+        "hints_sql",
+        "max_partition_bytes"
+      ],
+      "dependencias": [
+        "optimization"
+      ],
+      "reference_section_id": "optimizations_extra"
+    },
+    {
+      "id": "hints_sql",
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Should we force a Join strategy if the optimizer guesses the table size incorrectly?",
+      "subdecisiones": [],
+      "dependencias": [
+        "optimizacion_avanzada"
+      ],
+      "reference_section_id": "optimizations_extra"
+    },
+    {
+      "id": "max_partition_bytes",
+      "nombre": "maxPartitionBytes Tuning",
+      "tipo": "decision",
+      "nivel": 4,
+      "pregunta_guia": "Are we reading millions of tiny files or huge non-splittable chunks?",
+      "subdecisiones": [],
+      "dependencias": [
+        "optimizacion_avanzada"
+      ],
+      "reference_section_id": "optimizations_extra"
+    }
+  ],
+  "enlaces_transversales": [
+    {
+      "id": "e01",
+      "origen": "modo_procesamiento",
+      "destino": "slas_latencia",
+      "tipo": "restriction",
+      "descripcion": "The chosen processing mode defines the achievable latency range. Batch cannot guarantee sub-minute latencies."
+    },
+    {
+      "id": "e02",
+      "origen": "tamano_datos",
+      "destino": "candidato_broadcast",
+      "tipo": "determinante",
+      "descripcion": "Dataset size directly dictates if Broadcast Join applies. Above threshold, it is ruled out."
+    },
+    {
+      "id": "e03",
+      "origen": "candidato_broadcast",
+      "destino": "estrategia_fisica_join",
+      "tipo": "habilitador",
+      "descripcion": "If dataset meets the broadcast threshold, BHJ is the optimal default choice."
+    },
+    {
+      "id": "e04",
+      "origen": "distribucion_datos",
+      "destino": "data_skew",
+      "tipo": "causa_efecto",
+      "descripcion": "An unbalanced key distribution produces unequally sized partitions, manifesting as Data Skew."
+    },
+    {
+      "id": "e05",
+      "origen": "data_skew",
+      "destino": "estrategia_fisica_join",
+      "tipo": "riesgo_ejecucion",
+      "descripcion": "Data Skew acts severely upon Sort Merge Join: a single partition concentrates most workload."
+    },
+    {
+      "id": "e06",
+      "origen": "data_skew",
+      "destino": "capacidades_aqe",
+      "tipo": "mitigacion",
+      "descripcion": "With AQE enabled, the Skew Join optimizer splits overloaded partitions at runtime."
+    },
+    {
+      "id": "e07",
+      "origen": "data_skew",
+      "destino": "particionado_ventana",
+      "tipo": "riesgo_ejecucion",
+      "descripcion": "If a window partition key matches a skewed key, the corresponding executor will overload."
+    },
+    {
+      "id": "e08",
+      "origen": "diseno_joins",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "Any join other than BHJ introduces a stage boundary and a full shuffle operation."
+    },
+    {
+      "id": "e09",
+      "origen": "agregaciones",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "groupBy/agg operations inherently generate shuffle to gather identical rows from different partitions."
+    },
+    {
+      "id": "e10",
+      "origen": "operaciones_ventana",
+      "destino": "impacto_shuffle",
+      "tipo": "causa_efecto",
+      "descripcion": "Window functions trigger shuffle to partition and sort data."
+    },
+    {
+      "id": "e11",
+      "origen": "tamano_datos",
+      "destino": "config_particiones_shuffle",
+      "tipo": "determinante",
+      "descripcion": "Post-shuffle data volume dictates the optimal number of partitions to maintain ~128-200MB blocks."
+    },
+    {
+      "id": "e12",
+      "origen": "impacto_shuffle",
+      "destino": "capacidades_aqe",
+      "tipo": "habilitador",
+      "descripcion": "AQE acts at shuffle materialization points, dynamically adjusting resulting partition count."
+    },
+    {
+      "id": "e13",
+      "origen": "recomputo_dataframe",
+      "destino": "persistencia",
+      "tipo": "disparador",
+      "descripcion": "If an intermediate DF is the source for multiple actions, recomputation triggers the need to persist."
+    },
+    {
+      "id": "e14",
+      "origen": "formato_datos",
+      "destino": "pushdown_lectura",
+      "tipo": "habilitador",
+      "descripcion": "Columnar formats (Parquet, ORC) natively support projection pushdown. CSV/JSON do not."
+    },
+    {
+      "id": "e15",
+      "origen": "pushdown_lectura",
+      "destino": "tamano_datos",
+      "tipo": "mitigacion",
+      "descripcion": "Effective pushdown trims data volume read into memory, alleviating downstream size limits."
+    },
+    {
+      "id": "e16",
+      "origen": "impacto_shuffle",
+      "destino": "control_particiones",
+      "tipo": "disparador",
+      "descripcion": "Excessive shuffle prompts the need for physical partition control (repartition/coalesce)."
+    },
+    {
+      "id": "e17",
+      "origen": "slas_latencia",
+      "destino": "persistencia",
+      "tipo": "restriction",
+      "descripcion": "Strict SLAs may prohibit checkpoints (disk writes) due to the additional latency introduced."
+    },
+    {
+      "id": "e18",
+      "origen": "trade_latency_throughput",
+      "destino": "config_particiones_shuffle",
+      "tipo": "determinante",
+      "descripcion": "Prioritizing throughput implies more partitions (parallelism). Latency requires fewer tasks."
+    }
+  ]
+}
