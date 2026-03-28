@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { SparkNode, ReferenceSection, ReferenceEntry } from '../models/types';
+import type { SparkNode, ReferenceSection } from '../models/types';
 
 interface SearchResult {
   id: string;
