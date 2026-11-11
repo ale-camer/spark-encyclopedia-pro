@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "เส้นทางทั้งหมด (ภาพรวมฉบับสมบูรณ์)",
+      "description": "แผนผังสถาปัตยกรรม 49 โหนดฉบับสมบูรณ์ครอบคลุมทั้ง 6 เฟสการออกแบบ ใช้ Fit View [ ] หรือซูมเข้าไปในแต่ละคลัสเตอร์เพื่อตรวจสอบการตัดสินใจและข้อแลกเปลี่ยน (trade-offs) ข้ามเฟส"
+    },
+    "infraestructura_cluster": {
+      "label": "โครงสร้างพื้นฐานและหน่วยความจำ",
+      "description": "เฟส 0: กำหนด Cluster Manager และกลยุทธ์การจัดสรรหน่วยความจำก่อนรันโค้ดใดๆ ขั้นตอนนี้จะเป็นตัวกำหนดขีดจำกัดในการปฏิบัติงาน"
+    },
+    "contexto": {
+      "label": "บริบทของปัญหา",
+      "description": "ทำความเข้าใจปัญหาทางธุรกิจเป็นอันดับแรก อัตราการเข้ามาของข้อมูล, SLA ด้านความหน่วง (Latency) และโหมดการประมวลผล จะเป็นเงื่อนไขกำหนดการตัดสินใจทั้งหมดใน Spark ถัดจากนี้"
+    },
+    "datos": {
+      "label": "คุณลักษณะของข้อมูล",
+      "description": "ขนาดของชุดข้อมูล, การกระจายตัว (Data Skew), รูปแบบการจัดเก็บ (Storage Format) และการกำกับดูแลข้อมูล (Catalogs & ACLs) เป็นตัวกำหนดกลยุทธ์การประมวลผลทางกายภาพ"
+    },
+    "transformaciones": {
+      "label": "ประเภทการแปลงข้อมูล (Transformations)",
+      "description": "Joins, GroupBys และชนิดข้อมูลที่ซับซ้อน (Arrays, JSON) เป็นตัวกำหนดโครงสร้างและต้นทุนการทำ Shuffle ของไปป์ไลน์"
+    },
+    "ejecucion": {
+      "label": "ผลกระทบด้านการประมวลผล (Execution)",
+      "description": "วิเคราะห์ DAG, ผลกระทบของ Shuffle และประสิทธิภาพของ Task (Speculative Execution) เพื่อทำความเข้าใจว่าคอขวด (bottlenecks) ที่แท้จริงอยู่ที่ใด"
+    },
+    "optimization": {
+      "label": "กลยุทธ์การปรับแต่งประสิทธิภาพ (Optimization)",
+      "description": "การปรับจูนขั้นสุดท้าย: การจัดการพาร์ทิชัน, การทำ Caching, การปรับตัวขณะรันไทม์ด้วย AQE และการใช้ Hints/การปรับจูนแบบแมนนวล"
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "การออกแบบ Spark Pipeline",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "บริบทของปัญหา",
+      "pregunta_guia": "ไปป์ไลน์นี้ต้องการแก้ปัญหาอะไร และอยู่ภายใต้ข้อจำกัดในการปฏิบัติงานใดบ้าง?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch ปะทะ Streaming",
+      "pregunta_guia": "ข้อมูลเข้ามาเป็นชุดๆ แยกจากกัน (Batch) หรือเข้ามาเป็นกระแสอย่างต่อเนื่อง (Streaming)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch ปะทะ Continuous Processing",
+      "pregunta_guia": "ความหน่วง (Latency) ขั้นต่ำที่ยอมรับได้คือเท่าใด: วินาที (micro-batch) หรือ มิลลิวินาที (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA และเป้าหมายความหน่วง (Latency)",
+      "pregunta_guia": "มีการกำหนด SLA ไว้หรือไม่? ความหน่วงในการประมวลผลสูงสุดที่ยอมรับได้คือเท่าใด?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "ข้อแลกเปลี่ยน: Latency ปะทะ Throughput",
+      "pregunta_guia": "ฉันควรปรับแต่งเพื่อความเร็วในการตอบสนองต่อเหตุการณ์ (Latency) หรือปริมาณข้อมูลรวมที่ประมวลผลได้ (Throughput)?"
+    },
+    "datos": {
+      "nombre": "คุณลักษณะของข้อมูล",
+      "pregunta_guia": "คุณสมบัติใดของข้อมูลที่เป็นตัวกำหนดกลยุทธ์การประมวลผล?"
+    },
+    "tamano_datos": {
+      "nombre": "ขนาดของชุดข้อมูล (Dataset Size)",
+      "pregunta_guia": "ขนาดของข้อมูลอยู่ในระดับใด? MB, GB หรือ TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "ชุดข้อมูลมีขนาดพอดีกับหน่วยความจำสำหรับทำ Broadcast หรือไม่?",
+      "pregunta_guia": "ตารางขนาดเล็กมีขนาดไม่เกินค่า spark.sql.autoBroadcastJoinThreshold (ค่าเริ่มต้น 10MB) ใช่หรือไม่?"
+    },
+    "distribucion_datos": {
+      "nombre": "การกระจายตัวของข้อมูล (Data Distribution)",
+      "pregunta_guia": "ข้อมูลกระจายตัวอย่างสมดุลในทุกพาร์ทิชัน หรือมีคีย์ที่กระจุกตัวเด่นชัด (dominant keys)?"
+    },
+    "data_skew": {
+      "nombre": "การตรวจจับและการจัดการ Data Skew",
+      "pregunta_guia": "มีพาร์ทิชันที่มีขนาดใหญ่กว่าพาร์ทิชันอื่นอย่างเห็นได้ชัดหรือไม่? มีคีย์ที่มีจำนวนซ้ำสูงผิดปกติ (extreme cardinality) หรือไม่?"
+    },
+    "formato_datos": {
+      "nombre": "รูปแบบการจัดเก็บข้อมูล (Storage Format)",
+      "pregunta_guia": "รูปแบบไฟล์รองรับการอ่านแบบคอลัมน์ (columnar read), การบีบอัดที่มีประสิทธิภาพ และการทำ Partition Pruning หรือไม่?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "สามารถผลักตัวกรองข้อมูล (filters) และการเลือกคอลัมน์ลงไปยังระดับพื้นที่จัดเก็บข้อมูลก่อนอ่านเข้าสู่หน่วยความจำได้หรือไม่?"
+    },
+    "transformaciones": {
+      "nombre": "ประเภทการแปลงข้อมูล (Transformations)",
+      "pregunta_guia": "การแปลงข้อมูลประเภทใดเป็นสัดส่วนหลัก? มันทำให้เกิดการทำ Shuffle หรือไม่?"
+    },
+    "diseno_joins": {
+      "nombre": "การออกแบบ Join",
+      "pregunta_guia": "กลยุทธ์การ Join ทางกายภาพแบบใดที่ช่วยลดการทำ Shuffle ได้มากที่สุดเมื่อพิจารณาจากขนาดและการกระจายตัวของข้อมูล?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash ปะทะ Shuffle Hash ปะทะ Sort Merge Join",
+      "pregunta_guia": "ใช้ BHJ หากตารางมีขนาดเล็ก ใช้ SHJ หากข้อมูลพอดีกับหน่วยความจำ ใช้ SMJ (ค่าเริ่มต้น) หากข้อมูลมีขนาดใหญ่และสามารถเรียงลำดับได้"
+    },
+    "agregaciones": {
+      "nombre": "Aggregations และ GroupBy",
+      "pregunta_guia": "สามารถทำการยุบรวมข้อมูลเบื้องต้น (pre-aggregate) ภายในแต่ละพาร์ทิชันให้เสร็จสมบูรณ์ก่อนการทำ Shuffle ได้หรือไม่?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate ปะทะ Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate เร็วกว่าแต่กลุ่มข้อมูลต้องมีขนาดพอดีกับหน่วยความจำ ส่วน Sort Aggregate ปลอดภัยจากการล้นของหน่วยความจำ (spill-safe)"
+    },
+    "operaciones_ventana": {
+      "nombre": "การทำงานแบบ Window (Window Operations)",
+      "pregunta_guia": "ตรรกะทางธุรกิจต้องการการคำนวณบนพาร์ทิชันข้อมูลที่เรียงลำดับแล้ว (เช่น ranking, lag, rolling avg) หรือไม่?"
+    },
+    "particionado_ventana": {
+      "nombre": "กลยุทธ์ Window partitionBy",
+      "pregunta_guia": "คีย์สำหรับแบ่งพาร์ทิชันของ Window ช่วยให้ข้อมูลกระจายตัวได้สมดุล หรือยิ่งทำให้ปัญหา Data Skew รุนแรงขึ้น?"
+    },
+    "ejecucion": {
+      "nombre": "ผลกระทบด้านการประมวลผล",
+      "pregunta_guia": "การแปลงข้อมูลถูกแปลงไปเป็น Stage ต่างๆ ใน DAG อย่างไร? และสร้างคอขวด (bottlenecks) อะไรบ้าง?"
+    },
+    "impacto_shuffle": {
+      "nombre": "การเกิด Shuffle (Shuffle Generation)",
+      "pregunta_guia": "ไปป์ไลน์สร้างขอบเขตแบ่ง Stage (stage boundaries) กี่จุด? มีข้อมูลปริมาณเท่าใดที่ต้องส่งผ่านเครือข่าย?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "การปรับจูน spark.sql.shuffle.partitions",
+      "pregunta_guia": "จำนวนพาร์ทิชันทำให้ได้บล็อกขนาด ~100-200MB หรือไม่? จำนวนมากเกินไป (เกิด overhead) หรือน้อยเกินไป (เกิดอาการ spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "การวิเคราะห์ DAG Stage",
+      "pregunta_guia": "ใน DAG มี Stage ที่ซ้ำซ้อนหรือไม่? มีการนำ DataFrame ระหว่างทางกลับมาใช้ซ้ำหลายครั้งหรือไม่?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "DataFrame เดียวกันถูกประมวลผลซ้ำในหลายๆ Action หรือไม่?",
+      "pregunta_guia": "หาก DataFrame หนึ่งถูกเรียกใช้งานในหลายแขนงของ Action บน DAG โดยไม่ได้ทำ Persistence ไว้ มันจะถูกคำนวณใหม่ทั้งหมดทุกครั้ง"
+    },
+    "optimization": {
+      "nombre": "กลยุทธ์การปรับแต่งประสิทธิภาพ",
+      "pregunta_guia": "เทคนิคใดบ้างที่นำมาใช้เพื่อลดการทำ Shuffle, หลีกเลี่ยงการคำนวณซ้ำ และจัดการหน่วยความจำอย่างมีประสิทธิภาพ?"
+    },
+    "control_particiones": {
+      "nombre": "การควบคุมพาร์ทิชันทางกายภาพ",
+      "pregunta_guia": "มีความจำเป็นต้องกระจายข้อมูลใหม่เพื่อปรับสมดุลภาระงาน (load balancing) หรือเพื่อลดจำนวนไฟล์ผลลัพธ์หรือไม่?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition ปะทะ Coalesce",
+      "pregunta_guia": "Repartition: ทำให้เกิด Shuffle และช่วยกระจายข้อมูลให้สมดุล Coalesce: ไม่เกิด Shuffle เพียงแต่ลดจำนวนพาร์ทิชันโดยไม่กระจายข้อมูลใหม่"
+    },
+    "persistencia": {
+      "nombre": "การทำ Persistence สำหรับ DataFrame ระหว่างทาง",
+      "pregunta_guia": "คุ้มค่าหรือไม่ที่จะบันทึก DataFrame ระหว่างทางนี้ไว้ เพื่อหลีกเลี่ยงการคำนวณซ้ำที่มีต้นทุนสูง?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache ปะทะ Checkpoint",
+      "pregunta_guia": "Cache: รวดเร็วและเก็บประวัติ Lineage ไว้ Checkpoint: ตัดตอน DAG Lineage และเขียนลงดิสก์ มีความเสถียรและทนทานกว่า"
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "เปิดใช้งาน AQE (Spark 3+) หรือยัง? มันช่วยปรับแต่งประสิทธิภาพอัตโนมัติอะไรให้กับไปป์ไลน์นี้ได้บ้าง?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE สามารถเปลี่ยนแผนการประมวลผลทั้งหมดได้ในขณะรันไทม์: ยุบรวมพาร์ทิชันหลังทำ Shuffle, แปลงไปเป็น Broadcast Join และแยกพาร์ทิชันที่เกิดปัญหา Skew"
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "ตัวจัดการทรัพยากรใดที่จะทำหน้าที่ประสานงาน Executors และมีการจัดการหน่วยความจำอย่างไร?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "ตัวเลือกมาตรฐานระดับองค์กรแบบดั้งเดิม ผสานการทำงานเข้ากับระบบนิเวศ HDFS และ MapReduce"
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "ตัวเลือกแบบ Cloud-native สมัยใหม่ รัน Executors ในรูปแบบ Docker คอนเทนเนอร์พร้อมการแยกส่วนการทำงาน (isolation)"
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Spark จะจัดสรร RAM ระหว่างการประมวลผล (Execution) และแคชสำหรับจัดเก็บข้อมูล (Storage) อย่างไร?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful ปะทะ Stateless Streaming",
+      "pregunta_guia": "เราจำเป็นต้องยุบรวมข้อมูลข้ามหลายๆ แบตช์หรือไม่ (เช่น ยอดรวมสะสมแบบเลื่อนเวลา, การจัดกลุ่มเซสชัน)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (ข้อมูลที่มาถึงล่าช้า)",
+      "pregunta_guia": "Spark ควรรอข้อมูลที่มาถึงล่าช้านานเท่าใดก่อนที่จะล้างสถานะ (state) ทิ้ง?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "โหมดการเขียนผลลัพธ์ (Output Modes)",
+      "pregunta_guia": "เราจะเขียนผลลัพธ์ที่ยุบรวมแล้วอย่างไร? Append, Update หรือ Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "การกำกับดูแลและการค้นหาข้อมูล (Data Governance & Discovery)",
+      "pregunta_guia": "ผู้ใช้จะค้นพบชุดข้อมูลนี้ได้อย่างไร และใครบ้างที่ได้รับอนุญาตให้เข้าถึงข้อมูล?"
+    },
+    "sistema_catalogo": {
+      "nombre": "ระบบ Catalog (Hive ปะทะ Unity)",
+      "pregunta_guia": "เราควรลงทะเบียนตารางใน Metastore กลางสำหรับการเข้าถึงด้วย SQL และการติดตาม Lineage หรือไม่?"
+    },
+    "control_acceso": {
+      "nombre": "การควบคุมการเข้าถึง (ACLs)",
+      "pregunta_guia": "เราต้องการการควบคุมการเข้าถึงแบบละเอียด (Fine-Grained Access Control ระดับแถว/คอลัมน์) หรือแค่ IAM ระดับพื้นที่จัดเก็บข้อมูลก็เพียงพอแล้ว?"
+    },
+    "tipos_complejos": {
+      "nombre": "ชนิดข้อมูลที่ซับซ้อน (Complex Data Types)",
+      "pregunta_guia": "เรากำลังทำงานกับโครงสร้างข้อมูลที่ซ้อนกัน (JSON, Maps, Arrays) หรือไม่?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode ปะทะ Transform",
+      "pregunta_guia": "เราจะคลี่อาร์เรย์ออกเป็นหลายๆ แถว (explode) หรือปรับแก้ข้อมูลภายในอาร์เรย์โดยตรง (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "การแปลงข้อมูล Nested JSON",
+      "pregunta_guia": "เราควรดึงเฉพาะฟิลด์ข้อความเดี่ยวๆ ออกมา หรือแปลง JSON ทั้งก้อนให้เป็น Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "มีบาง Task ที่ทำงานช้ากว่าปกติแบบสุ่มเนื่องจากปัญหาฮาร์ดแวร์หรือโหนดที่มีปัญหาหรือไม่?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "การปรับจูนขั้นสูงและ Hints",
+      "pregunta_guia": "เราสามารถชี้นำ Catalyst Optimizer ด้วยตนเองเมื่อค่าสถิติผิดพลาดได้หรือไม่?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "เราควรบังคับเลือกกลยุทธ์การ Join หรือไม่ หากตัว Optimizer ประเมินขนาดตารางผิดพลาด?"
+    },
+    "max_partition_bytes": {
+      "nombre": "การปรับจูน maxPartitionBytes",
+      "pregunta_guia": "เรากำลังอ่านไฟล์ขนาดจิ๋วนับล้านไฟล์ หรือกำลังอ่านไฟล์ก้อนยักษ์ที่ไม่สามารถแบ่งแยกได้ (non-splittable)?"
+    }
+  },
+  "edges": {
+    "e01": "โหมดการประมวลผลที่เลือกจะเป็นตัวกำหนดช่วงความหน่วง (Latency) ที่ทำได้ ซึ่งโหมด Batch ไม่สามารถรับประกันความหน่วงระดับต่ำกว่านาทีได้",
+    "e02": "ขนาดของชุดข้อมูลเป็นตัวชี้ขาดโดยตรงว่าจะใช้ Broadcast Join ได้หรือไม่ หากเกินเกณฑ์ที่กำหนด วิธีนี้จะถูกตัดออกทันที",
+    "e03": "หากชุดข้อมูลมีขนาดอยู่ในเกณฑ์ Broadcast การใช้ BHJ จะเป็นตัวเลือกเริ่มต้นที่เหมาะสมที่สุด",
+    "e04": "การกระจายตัวของคีย์ที่ไม่สมดุลจะทำให้ได้พาร์ทิชันที่มีขนาดไม่เท่ากัน ซึ่งแสดงออกมาในรูปแบบของปัญหา Data Skew",
+    "e05": "Data Skew ส่งผลกระทบอย่างรุนแรงต่อ Sort Merge Join เนื่องจากพาร์ทิชันเดียวต้องรับภาระงานส่วนใหญ่ไว้ทั้งหมด",
+    "e06": "เมื่อเปิดใช้งาน AQE ตัวปรับแต่ง Skew Join จะทำการแบ่งพาร์ทิชันที่รับภาระหนักเกินไปออกเป็นส่วนย่อยๆ ในขณะรันไทม์",
+    "e07": "หากคีย์แบ่งพาร์ทิชันของ Window ตรงกับคีย์ที่เกิดปัญหา Skew ตัว Executor ที่รับผิดชอบพาร์ทิชันนั้นจะทำงานหนักเกินพิกัด",
+    "e08": "การ Join รูปแบบอื่นนอกเหนือจาก BHJ ล้วนสร้างขอบเขตแบ่ง Stage (stage boundary) และทำให้เกิดการทำ Shuffle เต็มรูปแบบ",
+    "e09": "คำสั่ง groupBy/agg จะทำให้เกิดการทำ Shuffle โดยธรรมชาติ เพื่อรวบรวมแถวที่มีคีย์เหมือนกันจากพาร์ทิชันต่างๆ เข้าด้วยกัน",
+    "e10": "ฟังก์ชัน Window จะกระตุ้นให้เกิดการทำ Shuffle เพื่อแบ่งพาร์ทิชันและเรียงลำดับข้อมูล",
+    "e11": "ปริมาณข้อมูลหลังการทำ Shuffle จะเป็นตัวกำหนดจำนวนพาร์ทิชันที่เหมาะสมที่สุด เพื่อรักษาขนาดบล็อกให้อยู่ที่ประมาณ ~128-200MB",
+    "e12": "AQE จะทำงาน ณ จุดที่มีการสร้างข้อมูลจริงหลังทำ Shuffle โดยปรับจำนวนพาร์ทิชันผลลัพธ์ให้โดยอัตโนมัติ",
+    "e13": "หาก DataFrame ระหว่างทางถูกนำไปใช้เป็นต้นทางสำหรับหลาย Action การต้องคำนวณซ้ำจะทำให้เกิดความจำเป็นในการทำ Persistence",
+    "e14": "รูปแบบไฟล์แบบคอลัมน์ (Parquet, ORC) รองรับการทำ Projection Pushdown ในตัว ส่วน CSV/JSON ไม่รองรับ",
+    "e15": "การทำ Pushdown ที่มีประสิทธิภาพช่วยลดปริมาณข้อมูลที่ต้องอ่านเข้าสู่หน่วยความจำ ช่วยบรรเทาข้อจำกัดด้านขนาดข้อมูลในขั้นตอนถัดๆ ไป",
+    "e16": "การเกิด Shuffle ที่มากเกินไปทำให้เกิดความจำเป็นในการควบคุมพาร์ทิชันทางกายภาพ (Repartition/Coalesce)",
+    "e17": "SLA ที่เข้มงวดอาจไม่อนุญาตให้ทำ Checkpoint (การเขียนลงดิสก์) เนื่องจากจะเพิ่มความหน่วง (Latency) ให้กับระบบ",
+    "e18": "การให้ความสำคัญกับ Throughput หมายถึงการใช้พาร์ทิชันจำนวนมากขึ้น (เพิ่มการทำงานแบบขนาน) ในขณะที่การเน้นลด Latency ต้องใช้จำนวน Task ที่น้อยลง"
+  }
+}

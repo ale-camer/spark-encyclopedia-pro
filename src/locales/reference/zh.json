@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Join 类型 (Join Types)",
+      "description": "PySpark 中可用的所有 Join 策略。理解每种类型的行为、行选择逻辑以及物理执行机制，对于构建正确且高性能的数据流水线至关重要。"
+    },
+    "window_functions": {
+      "title": "窗口函数 (Window Functions)",
+      "description": "在与当前行相关的一组行上计算值的高级分析操作，包括排名（Ranking）、偏移（Offsets）和滚动聚合。"
+    },
+    "aggregations": {
+      "title": "聚合操作 (Aggregations)",
+      "description": "Spark 如何跨分组计算汇总统计信息。理解 Hash Aggregate 与 Sort Aggregate 的区别以及分组如何影响 Shuffle，是处理大规模数据的关键。"
+    },
+    "storage_and_pushdown": {
+      "title": "存储与下推 (Storage & Pushdown)",
+      "description": "磁盘上的数据布局如何影响 Spark 性能。优化的存储格式（Parquet/Delta）允许 Spark 仅读取其真正需要的数据。"
+    },
+    "persistence_and_caching": {
+      "title": "持久化与缓存 (Persistence & Caching)",
+      "description": "如何在不重新计算整个血缘（Lineage）的情况下复用中间 DataFrame。这对于迭代算法和多次 Action 操作至关重要。"
+    },
+    "aqe_optimizations": {
+      "title": "核心优化与 AQE",
+      "description": "Spark 如何根据实际运行时数据统计信息动态调整执行计划。Adaptive Query Execution (AQE) 是现代 Spark 中最大的性能提升特性。"
+    },
+    "infrastructure": {
+      "title": "基础设施与部署",
+      "description": "Spark 如何连接集群管理器（Cluster Managers）并管理应用程序生命周期。这是每个 Spark 作业的基石。"
+    },
+    "memory_management": {
+      "title": "统一内存管理 (Unified Memory Management)",
+      "description": "Spark 如何在计算（Execution）与缓存（Storage）之间划分 Executor 内存。Spark 3.x 采用了动态共享的统一内存管理机制。"
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "可靠处理数据流、管理状态（State）以及应对乱序迟到记录的高级流处理概念。"
+    },
+    "data_governance": {
+      "title": "数据治理与安全",
+      "description": "Spark 如何与 Catalog 集成，以提供数据发现、Schema 强校验以及细粒度访问控制。"
+    },
+    "complex_types": {
+      "title": "复杂数据类型 (Complex Data Types)",
+      "description": "处理非标量数据，如 Arrays、Structs、Maps 和原始 JSON 字符串。对于现代 API 和 NoSQL 数据源必不可少。"
+    },
+    "execution_internals": {
+      "title": "执行引擎与 Shuffle 内部机制",
+      "description": "深入剖析 Spark 执行引擎底层原理，理解 Tungsten、内存管理与推测执行（Speculative Execution）。"
+    },
+    "optimizations_extra": {
+      "title": "高级优化调优",
+      "description": "当自动机制（如 AQE）不够用或缺少统计信息时，用于手动调优 Spark 的配置开关与 Hints。"
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join（内连接）",
+      "subtitle": "仅返回两侧都匹配的行",
+      "description": "最常见的 Join 类型。仅返回关联 Key 在两个 DataFrame 中同时存在的行。任何一侧如果没有在另一侧找到匹配项，该行将被完全排除。在 SQL 中对应经典的 JOIN 或 INNER JOIN。",
+      "when_to_use": "当你只关心两侧都有对应匹配记录时使用。例如：查询有对应客户的订单、有对应商品的交易。如果某条记录没有匹配项，则不需要保留它。",
+      "edge_cases": [
+        "NULL Key 永远不会匹配——即使两侧的关联 Key 都是 NULL，包含 NULL Key 的行也会被排除在结果之外。",
+        "右侧如果存在重复 Key，会针对这些 Key 产生局部笛卡尔积（行膨胀）。",
+        "多列 Inner Join 示例：df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join（左外连接）",
+      "subtitle": "返回左表所有行，以及右表匹配的行",
+      "description": "返回左侧 DataFrame 的所有行，并在右侧存在匹配时附上右侧的匹配行。当右侧没有匹配项时，右侧列将填充为 NULL。在 SQL 中也称为 LEFT JOIN。",
+      "when_to_use": "当左侧 DataFrame 是你的“主数据源（Source of Truth）”，且你希望用右侧的可选数据来丰富它时使用。例如：获取所有客户及其最新订单（如果有）。没有订单的客户依然会保留。",
+      "edge_cases": [
+        "查找在右侧没有匹配项的记录：在 Join 之后过滤右侧某列为 NULL 的行。",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) —— 可找出左表中未匹配的行。",
+        "如果右侧存在重复 Key，匹配上的左表行会被复制多份。"
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join（右外连接）",
+      "subtitle": "返回右表所有行，以及左表匹配的行",
+      "description": "Left Outer Join 的镜像操作。返回右侧 DataFrame 的所有行，对于左表未匹配的部分，左侧列填充为 NULL。不如 LEFT JOIN 常用——通常你可以调换左右 DataFrame 的顺序改用 LEFT JOIN，可读性更直观。",
+      "when_to_use": "当右侧 DataFrame 是权威主数据源时使用。在实际开发中，调换 DataFrame 顺序并使用 Left Join 通常更清晰、更易于理解。",
+      "edge_cases": [
+        "等价于调换顺序后的左连接：users.join(orders, 'user_id', 'left') —— 因此很少必须使用 Right Join。",
+        "对于未匹配的右表行，NULL 填充发生在左侧列上。"
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join（全外连接）",
+      "subtitle": "返回两侧所有行，未匹配处填充 NULL",
+      "description": "返回两个 DataFrame 的所有行。能够匹配的行会合并；在另一侧没有匹配的行，其缺失侧的列会填充为 NULL。在 SQL 中也称为 FULL JOIN 或 FULL OUTER JOIN。",
+      "when_to_use": "用于数据对账（Data Reconciliation）：比对两个数据源，找出仅存在于一侧或同时存在于两侧的数据。在 ETL 流水线的变更检测（如 SCD Type 2）中非常常见。",
+      "edge_cases": [
+        "Full Outer Join 开销极大——它无法使用 Broadcast Join 策略，总是会导致全量 Shuffle。",
+        "仅查找存在于 A 表中的行：result.filter(result['name_b'].isNull())",
+        "仅查找存在于 B 表中的行：result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join（笛卡尔积 / Cartesian Product）",
+      "subtitle": "左表的每一行与右表的每一行两两配对",
+      "description": "返回笛卡尔积：将左侧 DataFrame 的每一行与右侧 DataFrame 的每一行进行组合。如果左表有 M 行，右表有 N 行，结果将有 M×N 行。不需要关联 Key。计算代价极高——请务必谨慎使用。",
+      "when_to_use": "用于生成两个小型 DataFrame 的所有可能组合。常见场景：生成报表骨架所需的全部“日期 × 商品”组合，或将每条记录与其他所有记录进行两两比较。仅限在小数据集上使用。",
+      "edge_cases": [
+        "如果左表 = 100 万行，右表 = 100 万行 → 结果 = 1 万亿行！执行前务必先检查数据量。",
+        "作为安全防护，Spark 要求显式设置 spark.sql.crossJoin.enabled=true 才允许隐式 Cross Join。",
+        "性能特征：底层使用 BroadcastNestedLoopJoin 或 CartesianProduct 物理算子——没有哈希表加速。"
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join（左半连接）",
+      "subtitle": "返回在右表中存在匹配的左表行——不包含右表列",
+      "description": "返回左侧 DataFrame 中在右侧存在匹配的行，但结果中不包含右侧的任何列。它类似于 INNER JOIN，但只保留左表列且不会因右表重复而膨胀。非常适合作为基于另一个数据集的过滤条件。",
+      "when_to_use": "作为存在性过滤器（Existence Filter）使用：例如“找出至少下过一单的所有客户”——即使某个客户有多个订单，也不会重复生成客户行。当你不需要右表列时，比 Inner Join 更高效。",
+      "edge_cases": [
+        "结果 Schema 仅包含左侧 DataFrame 的列——不会出现任何右表列。",
+        "右侧如果有多个匹配项，不会导致左表行重复（这一点不同于 Inner Join）。",
+        "等价 SQL：SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join（左反连接）",
+      "subtitle": "返回在右表中没有匹配的左表行",
+      "description": "Left Semi Join 的反向操作。返回左侧 DataFrame 中在右侧完全不存在匹配的行。非常适合查找缺失记录或孤儿记录（Orphaned Records）。结果列仅来自左侧 DataFrame。",
+      "when_to_use": "用于查找在另一张表中不存在的记录。例如：从未下过订单的客户、没有销量的商品、本月未登录的用户。也常用于验证数据完整性。",
+      "edge_cases": [
+        "包含 NULL 关联 Key 的行：由于 NULL != NULL，左表中关联 Key 为 NULL 的行总会出现在 Anti Join 结果中。",
+        "等价 SQL：SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "相比 df1.exceptAll(df1.join(df2, ..., 'inner')) 是高效得多的替代方案。"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join（自连接）",
+      "subtitle": "将 DataFrame 与其自身进行关联",
+      "description": "Self Join 是将一个 DataFrame 与它自己的副本进行 Join。常用于处理层级关系或在同一数据集内部比较不同行。必须使用别名（Alias）来区分左右两侧。",
+      "when_to_use": "适用于：在同一张表中查找“经理-员工”上下级关系、将每一行与其他行进行比较（例如查找重复交易），或遍历存储在单表中的树形/图结构。",
+      "edge_cases": [
+        "务必为 Self Join 的两侧指定 alias——没有别名会导致 Spark 无法解析同名列的歧义。",
+        "对于深层级结构（超过 2 层），建议使用 GraphX 或配合 .checkpoint() 的迭代 Join，以避免血缘（Lineage）爆炸。",
+        "使用 Inner 条件的 Self Join 容易产生 N² 级别的行组合——请务必仔细添加过滤条件。"
+      ]
+    },
+    "ranking_functions": {
+      "title": "排名函数：row_number vs rank vs dense_rank",
+      "subtitle": "处理并列值与编号规则",
+      "description": "这些窗口函数会为窗口分区内的每一行分配一个序号。它们之间的核心区别在于如何处理并列情况（即 ORDER BY 子句中值相同的行）。",
+      "when_to_use": "需要唯一行号去重时使用 row_number；需要竞赛式并列排名（并列后跳过后续名次，如 1, 2, 2, 4）时使用 rank；需要连续无空隙并列排名（如 1, 2, 2, 3）时使用 dense_rank。",
+      "edge_cases": [
+        "如果不指定 orderBy，row_number 的结果可能是非确定性的（每次运行结果不同）。",
+        "按低基数或倾斜列进行分区（partitionBy）或在不指定分区的情况下排序可能会导致严重的内存压力。"
+      ]
+    },
+    "offset_functions": {
+      "title": "偏移函数：lag vs lead",
+      "subtitle": "访问前N行或后N行记录",
+      "description": "lag 和 lead 允许你在不执行 Self Join 的情况下访问窗口内其他行（当前行之前或之后）的数据。lag 向前看 N 行，lead 向后看 N 行。",
+      "when_to_use": "非常适合时间序列分析：计算环比/同比增长、检测状态变更，或计算相邻事件之间的时间差。",
+      "edge_cases": [
+        "合理设置默认值（default 参数）非常重要，可避免分区首行或末行出现 NULL。",
+        "为了获得稳定可靠的 lag/lead 结果，排序规则（orderBy）必须具有严格确定性。"
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate（哈希聚合）",
+      "subtitle": "默认且速度最快的聚合方式",
+      "description": "Spark 在内存中构建一个 Hash Map，其中 Key 是分组列，Value 是动态更新的聚合缓冲区。它分两个阶段运行：局部预聚合（Partial Aggregation，在 Executor 端）和最终聚合（Final Aggregation，在 Shuffle 之后）。",
+      "when_to_use": "大多数 groupBy 操作的默认首选。只要单个分区内的唯一分组能够放入 Executor 内存堆（或 Tungsten 内存页）中，它的执行速度就极快。",
+      "edge_cases": [
+        "内存压力：如果唯一 Key 数量过多，Spark 可能会溢写到磁盘（Spill to disk）或回退到 SortAggregate。",
+        "高基数分组（High Cardinality）：可能导致 Shuffle 数据倾斜。"
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate（排序聚合）",
+      "subtitle": "应对超大规模分组的防溢写回退方案",
+      "description": "要求数据先按分组 Key 排序。随后 Spark 顺序遍历排好序的数据，累加当前 Key 的聚合值，直到遇到新的 Key 为止。",
+      "when_to_use": "当分组 Key 数量过大无法放入内存 Hash Map、聚合函数不支持更新定长内存缓冲区（如含特定字符串类型），或者数据本身已经排好序时使用。它比 HashAggregate 慢，但由于不需要随机访问的哈希表，内存稳定性更高。",
+      "edge_cases": [
+        "如果输入数据尚未排序，会增加额外的排序开销。",
+        "Spill-safe（安全溢写）：相比 HashAggregate，面对大数据量时更不容易因 OOM 而崩溃。"
+      ]
+    },
+    "columnar_formats": {
+      "title": "列式存储 vs 行式存储格式",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "列式格式（Columnar Formats）按列而非按行存储数据。这对于分析型查询（OLAP）极其高效，因为 Spark 可以直接跳过 SELECT 子句中未涉及的整列数据，并提供更高的压缩比。",
+      "when_to_use": "对于大规模分析工作负载，始终优先使用 Parquet 或 Delta Lake。除原始数据落地层（Landing Zone）外，避免在后续处理中使用 CSV 或 JSON。",
+      "edge_cases": [
+        "Delta Lake 能更好地处理 Schema 演进（Schema Evolution）和 ACID 事务。",
+        "行式格式（如 Avro）更适合高吞吐量的单行写入或流式消息传输场景。"
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown（谓词与投影下推）",
+      "subtitle": "在存储层直接过滤和裁剪数据",
+      "description": "Spark 将 FILTER（WHERE 子句）和 SELECT（列裁剪）下推到存储层执行。底层读取器（如 Parquet/Delta）利用文件统计信息（Min/Max）仅返回满足过滤条件的行和列，从而大幅减少磁盘和网络 I/O。",
+      "when_to_use": "对性能至关重要。如果底层格式支持，Spark 会自动执行下推。请确保按照经常用于过滤的业务列对数据进行合理分区或 Z-Order 排序。",
+      "edge_cases": [
+        "对于黑盒 UDF（用户自定义函数）或过于复杂的表达式，谓词下推无法生效。",
+        "过滤条件通常需要作用在顶层列或受支持的嵌套字段上。"
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "管理内存存储级别与血缘复用",
+      "description": "cache() 是 persist(MEMORY_AND_DISK) 的简写形式。它指示 Spark 在首次计算该 DataFrame 后将其缓存在内存中（如果内存放不下则溢写到磁盘），以便后续复用。",
+      "when_to_use": "当同一个中间 DataFrame 在下游被多个 Action 重复使用时调用。例如：先基于该数据集计算汇总指标，随后又将其写入存储或用于训练模型。"
+    },
+    "checkpointing": {
+      "title": "Checkpointing（检查点）",
+      "subtitle": "截断血缘以保障执行安全",
+      "description": "与 cache 不同，checkpoint() 会将数据持久化写入可靠的分布式存储（如 HDFS/S3），并彻底截断（Truncate）DAG 血缘链。这可以防止血缘链过长导致的驱动器内存溢出或 StackOverflowError。",
+      "when_to_use": "在迭代式算法（如机器学习、图计算）或转换血缘极其复杂冗长时使用。它比 cache 慢（因为必须写磁盘），但更加稳健可靠。"
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "现代 Spark (3.x+) 的智能优化引擎",
+      "description": "AQE 会在查询的各个 Stage 之间动态重新优化执行计划。它利用已完成 Stage 收集到的真实运行时统计数据（如实际字节数和行数），来改进剩余 Stage 的物理执行计划。",
+      "when_to_use": "在 Spark 3.2+ 中默认启用。建议始终保持开启状态。它主要自动解决三大核心问题：动态合并 Shuffle 分区（Coalescing Partitions）、动态切换 Join 策略，以及自动优化数据倾斜 Join（Skew Join）。"
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join Optimization（倾斜连接优化）",
+      "subtitle": "自动处理不均匀的数据分布",
+      "description": "当某个分区的数据量远超其他分区时就会发生数据倾斜（Data Skew），导致单个任务耗时比其他任务长数十倍。AQE 能够自动检测到这种情况，并将倾斜的大分区拆分为多个较小的子分区并行处理。",
+      "when_to_use": "当你在 Spark UI 中看到个别“拖后腿任务（Straggler Tasks）”迟迟无法完成时。AQE 会通过查找远大于中位数/平均值的分区自动触发此优化。"
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "集群资源编排策略",
+      "description": "Spark 可以运行在多种集群资源管理器之上。YARN 是传统的 Hadoop 资源管理器，而 Kubernetes (K8s) 则是现代云原生的容器编排标准。",
+      "when_to_use": "对于传统的本地（On-prem）Hadoop 集群使用 YARN；对于需要更好环境隔离、容器化依赖打包和弹性扩缩容的云原生环境使用 Kubernetes (K8s)。"
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode（部署模式）",
+      "subtitle": "Driver 进程运行在哪里？",
+      "description": "在 Client Mode（客户端模式）下，Driver 运行在你提交作业的本地机器或网关节点上；在 Cluster Mode（集群模式）下，Driver 运行在集群内部的某个 Worker 节点上。",
+      "when_to_use": "交互式调试、命令行或 Notebook 开发时使用 Client Mode；生产环境作业务必使用 Cluster Mode，以避免网络延迟，并防止因提交机断开连接而导致整个作业失败。"
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Memory",
+      "subtitle": "动态共享的内存边界",
+      "description": "Execution Memory（执行内存）用于 Shuffle、Join、Sort 和聚合；Storage Memory（存储内存）用于缓存数据和 Broadcast 变量。它们共享同一个内存池：当一方空闲时，另一方可以动态借用其空间。",
+      "when_to_use": "如果作业包含重度缓存或超大规模 Shuffle，可适当调优 spark.memory.fraction（默认 0.6）和 spark.memory.storageFraction（默认 0.5）。"
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Late Data（水位线与迟到数据）",
+      "subtitle": "限制有状态流处理中的内存占用",
+      "description": "Watermark（水位线）是一个移动的时间阈值。如果当前观察到的最大事件时间为 T，设定的水位线延迟阈值为 W，那么任何事件时间早于 (T - W) 的迟到数据都会被丢弃或不再更新旧状态。这使得 Spark 能够安全地清理内存中的历史状态。",
+      "when_to_use": "在 Structured Streaming 中基于事件时间（Event Time）执行窗口聚合或流流 Join 时必须使用。如果不设置 Watermark，状态存储将无限增长并最终导致 OOM。"
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes（流式输出模式）",
+      "subtitle": "Spark 如何写出流处理结果",
+      "description": "1. Append（追加模式）：仅写出永远不再改变的新增行（用于聚合时必须配合 Watermark）。\n2. Update（更新模式）：仅写出在上一个触发批次（Trigger）中发生更新的行。\n3. Complete（完全模式）：每次触发时写出整张结果表的全部内容。",
+      "when_to_use": "写入文件或日志流（如 Parquet/Kafka）时用 Append；写入外部数据库或键值存储做实时更新时用 Update；结果表极小或计算全局总计指标时用 Complete。"
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "集中管理表与元数据",
+      "description": "Catalog 或 Metastore 充当所有数据集的中央目录。它将逻辑表名（如 \"sales.customers\"）映射到物理文件路径（如 \"s3://bucket/path/parquet/\"）。Hive Metastore (HMS) 是传统的开源标准，而 Unity Catalog 是现代数据湖仓（Lakehouse）的企业级统一治理标准。",
+      "when_to_use": "在生产环境中始终使用 Catalog，切勿在代码中纯粹硬编码物理文件路径。Catalog 将物理存储与逻辑表解耦，从而支持无缝的数据迁移与血缘治理。"
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "行级与列级细粒度安全控制",
+      "description": "存储级安全（如 IAM 角色）只能保护目录或存储桶级别。现代 Catalog（如 Unity Catalog 或 AWS Lake Formation）允许你编写 SQL GRANT 语句或过滤策略，以限制对特定行（例如仅允许英国区域用户查看 UK 行）或特定列（例如对身份证号/SSN 进行脱敏掩码）的访问。",
+      "when_to_use": "在处理个人身份信息（PII）、满足 GDPR 等数据合规要求以及构建多租户数据平台时必不可少。"
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions（高阶函数）",
+      "subtitle": "高效处理 Array 数组列",
+      "description": "可以使用 explode() 将数组列展开为多行，但这会成倍放大数据集的行数。另一种方式是使用 SQL 高阶函数（Higher-Order Functions，如 transform、filter、aggregate），直接在不增加行数的情况下对数组内部元素进行映射和过滤。",
+      "when_to_use": "如果你需要按数组中的单个元素进行 groupBy 或 join，请使用 explode()；如果你只需要在行内修改或过滤数组元素（例如将数组中所有税费乘以 1.2）并保持原有行数不变，请优先使用 transform() 等高阶函数。"
+    },
+    "json_parsing": {
+      "title": "JSON 解析：Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "处理 JSON 文本列时，你可以选择按路径提取单个字段作为字符串（get_json_object），也可以使用预定义的 Schema 将整个 JSON 字符串一次性解析为原生的 Spark StructType（from_json）。",
+      "when_to_use": "需要提取多个字段时，尽可能使用带有明确 Schema 的 from_json()。它只需解析一次 JSON 并将其存储为强类型列，比在同一行上多次重复调用 get_json_object() 快得多。"
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution（推测执行）",
+      "subtitle": "应对慢节点与拖后腿任务 (Stragglers)",
+      "description": "如果集群中的某个节点由于硬件老化、磁盘故障或网络抖动而变慢，该节点上的单个任务耗时可能会比其余任务长 10 倍（成为 Straggler）。推测执行（Speculative Execution）会检测到这种异常，并在健康的节点上启动一个完全相同的备份任务，哪个先完成就采用哪个的结果。",
+      "when_to_use": "在不太稳定的云环境或异构集群中建议开启（spark.speculation=true）。注意：如果任务直接向外部数据库写入数据，请谨慎使用（要求写入操作必须具备幂等性！）。"
+    },
+    "broadcast_hints": {
+      "title": "Join Hints（连接提示）",
+      "subtitle": "手动干预 Catalyst 优化器决策",
+      "description": "有时 Spark 缺乏准确的统计信息（例如直接读取未收集统计信息的原始数据湖文件，或经过复杂过滤后的数据），未能意识到某张表其实足够小可以广播。此时使用 Broadcast Hint（如 df.hint(\"broadcast\")）可强制 Spark 使用 BroadcastHashJoin。",
+      "when_to_use": "当你在 Spark UI 中发现某个缓慢的 SortMergeJoin，并且你确知其中一侧的数据量完全可以轻松放入 Executor 内存中（通常 < 1GB，尽管默认自动阈值仅为 10MB）时使用。"
+    },
+    "max_partition_bytes": {
+      "title": "文件读取与 maxPartitionBytes",
+      "subtitle": "调优数据读取阶段的分区大小",
+      "description": "当读取成百上千个微小的 CSV/JSON/Parquet 文件或超大文件时，读取分区的划分直接影响并行度。你可以通过调整 spark.sql.files.maxPartitionBytes（默认 128MB）以及 openCostInBytes，在读取阶段将多个小文件打包合并到单个分区中，或将大文件切分为更小的数据块。",
+      "when_to_use": "如果你的读取 Stage 产生了成千上万个仅耗时 10ms 的微小任务（小文件综合征），或者分区过大导致后续算子内存紧张，请调优 maxPartitionBytes 或启用文件合并。"
+    }
+  }
+}

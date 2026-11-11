@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Jenis-Jenis Join (Join Types)",
+      "description": "Semua strategi Join yang tersedia di PySpark. Memahami perilaku setiap jenis, logika pemilihan baris, dan eksekusi fisiknya sangat penting untuk membangun pipeline yang benar dan berperforma tinggi."
+    },
+    "window_functions": {
+      "title": "Fungsi Window (Window Functions)",
+      "description": "Operasi analitik tingkat lanjut yang menghitung nilai di seluruh kumpulan baris yang terkait dengan baris saat ini. Mencakup fungsi peringkat (ranking), offset, dan agregat bergulir (rolling aggregates)."
+    },
+    "aggregations": {
+      "title": "Agregasi (Aggregations)",
+      "description": "Bagaimana Spark menghitung statistik ringkasan di seluruh grup. Memahami perbedaan Hash vs Sort Aggregate serta bagaimana pengelompokan memengaruhi Shuffle adalah kunci untuk data berskala besar."
+    },
+    "storage_and_pushdown": {
+      "title": "Penyimpanan & Pushdown",
+      "description": "Bagaimana tata letak data pada disk memengaruhi performa Spark. Format yang dioptimalkan (Parquet/Delta) memungkinkan Spark membaca hanya data yang benar-benar dibutuhkannya."
+    },
+    "persistence_and_caching": {
+      "title": "Persistence & Caching",
+      "description": "Cara menggunakan kembali DataFrame perantara tanpa menghitung ulang seluruh Lineage. Sangat krusial untuk algoritma iteratif dan pencabangan banyak Action."
+    },
+    "aqe_optimizations": {
+      "title": "Optimasi Inti & AQE",
+      "description": "Bagaimana Spark mengadaptasi rencana eksekusinya saat runtime berdasarkan statistik data aktual. Adaptive Query Execution (AQE) adalah peningkatan performa terbesar di Spark Modern."
+    },
+    "infrastructure": {
+      "title": "Infrastruktur & Deployment",
+      "description": "Bagaimana Spark terhubung ke Cluster Managers dan mengelola siklus hidup aplikasi. Ini adalah fondasi dari setiap pekerjaan (job) Spark."
+    },
+    "memory_management": {
+      "title": "Unified Memory Management",
+      "description": "Bagaimana Spark membagi RAM Executor antara komputasi (Execution) dan cache (Storage). Spark 3.x menggunakan pendekatan terpadu (unified)."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Konsep lanjutan untuk memproses aliran data secara andal, menangani state, dan mengatasi catatan data yang datang terlambat atau tidak berurutan."
+    },
+    "data_governance": {
+      "title": "Tata Kelola & Keamanan Data",
+      "description": "Bagaimana Spark berintegrasi dengan Catalog untuk menyediakan penemuan data (data discovery), penegakan skema (schema enforcement), dan kontrol akses yang terperinci (Fine-Grained Access Control)."
+    },
+    "complex_types": {
+      "title": "Tipe Data Kompleks",
+      "description": "Bekerja dengan data non-skalar seperti Arrays, Structs, Maps, dan string JSON mentah. Sangat penting untuk sumber data API modern dan NoSQL."
+    },
+    "execution_internals": {
+      "title": "Internal Eksekusi & Shuffle",
+      "description": "Di balik layar Spark Execution Engine. Memahami Tungsten, manajemen memori, dan spekulasi tugas (Speculative Execution)."
+    },
+    "optimizations_extra": {
+      "title": "Penyetelan Optimasi Lanjutan",
+      "description": "Pengaturan manual untuk menyetel Spark ketika mekanisme otomatis (seperti AQE) tidak cukup atau ketika statistik data tidak tersedia."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Hanya mengembalikan baris yang cocok dari kedua sisi",
+      "description": "Jenis Join yang paling umum. Mengembalikan baris di mana kunci Join ada di KEDUA DataFrame. Baris dari salah satu sisi yang tidak memiliki pasangan cocok di sisi lainnya akan dikecualikan sepenuhnya. Dalam SQL: JOIN atau INNER JOIN klasik.",
+      "when_to_use": "Gunakan ketika Anda hanya peduli pada catatan (records) yang memiliki pasangan yang cocok. Contoh: pesanan yang memiliki pelanggan yang cocok, transaksi dengan produk yang cocok. Jika suatu catatan tidak memiliki kecocokan, Anda tidak menginginkannya.",
+      "edge_cases": [
+        "Kunci NULL tidak pernah cocok — baris dengan nilai NULL pada kunci Join dikecualikan dari hasil meskipun kedua sisi memiliki nilai NULL.",
+        "Kunci duplikat di sisi kanan akan menghasilkan produk Kartesius (Cartesian product) untuk kunci-kunci tersebut.",
+        "Inner join pada beberapa kolom: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Semua baris dari kiri, baris yang cocok dari kanan",
+      "description": "Mengembalikan SEMUA baris dari DataFrame kiri, ditambah baris yang cocok dari kanan jika kecocokan ditemukan. Ketika tidak ada kecocokan di sisi kanan, kolom sisi kanan akan diisi dengan NULL. Juga disebut LEFT JOIN dalam SQL.",
+      "when_to_use": "Gunakan ketika DataFrame kiri adalah 'sumber kebenaran' (source of truth) Anda dan Anda ingin memperkayanya dengan data opsional dari sisi kanan. Contoh: dapatkan semua pelanggan beserta pesanan terbaru mereka (jika ada). Pelanggan tanpa pesanan tetap ditampilkan.",
+      "edge_cases": [
+        "Untuk menemukan catatan yang TIDAK memiliki kecocokan di sisi kanan: filter di mana kolom sisi kanan bernilai NULL setelah Join.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — menemukan baris kiri yang tidak memiliki pasangan.",
+        "Jika sisi kanan memiliki kunci duplikat, baris kiri yang cocok akan ikut terduplikasi."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Semua baris dari kanan, baris yang cocok dari kiri",
+      "description": "Kebalikan cermin dari Left Outer Join. Mengembalikan SEMUA baris dari DataFrame kanan, dengan nilai NULL untuk kolom kiri yang tidak cocok. Lebih jarang digunakan dibandingkan LEFT — biasanya Anda cukup menukar posisi DataFrame dan menggunakan LEFT sebagai gantinya, yang jauh lebih intuitif.",
+      "when_to_use": "Gunakan ketika DataFrame kanan adalah sumber otoritatif. Dalam praktiknya, menukar posisi DataFrame dan menggunakan Left Join biasanya lebih rapi dan lebih mudah dipahami.",
+      "edge_cases": [
+        "Setara dengan: users.join(orders, 'user_id', 'left') — Right Join jarang sekali diperlukan.",
+        "Pengisian nilai NULL (NULL padding) terjadi pada kolom sisi KIRI untuk baris kanan yang tidak memiliki kecocokan."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Semua baris dari kedua sisi, bernilai NULL jika tidak ada kecocokan",
+      "description": "Mengembalikan SEMUA baris dari KEDUA DataFrame. Baris yang memiliki kecocokan akan digabungkan. Baris yang tidak memiliki kecocokan di sisi lain akan diisi dengan NULL pada kolom yang hilang. Juga disebut FULL JOIN atau FULL OUTER JOIN dalam SQL.",
+      "when_to_use": "Gunakan untuk rekonsiliasi data: membandingkan dua sumber untuk menemukan apa yang ada di satu sumber tetapi tidak ada di sumber lainnya, atau apa yang ada di keduanya. Umum digunakan dalam pipeline ETL untuk deteksi perubahan (SCD Type 2).",
+      "edge_cases": [
+        "Full Outer Join memakan banyak sumber daya — tidak dapat menggunakan strategi Broadcast Join dan selalu menghasilkan Shuffle penuh.",
+        "Untuk menemukan baris yang HANYA ada di A: result.filter(result['name_b'].isNull())",
+        "Untuk menemukan baris yang HANYA ada di B: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Produk Kartesius / Cartesian Product)",
+      "subtitle": "Setiap baris di kiri dipasangkan dengan setiap baris di kanan",
+      "description": "Mengembalikan produk Kartesius: setiap baris dari DataFrame kiri dipasangkan dengan SETIAP baris dari DataFrame kanan. Jika sisi kiri memiliki M baris dan sisi kanan memiliki N baris, hasilnya memiliki M×N baris. Tidak memerlukan kunci Join. Sangat membebani sistem — gunakan dengan sangat hati-hati.",
+      "when_to_use": "Gunakan untuk menghasilkan semua kombinasi dari dua DataFrame kecil. Umum digunakan untuk: menghasilkan semua kombinasi tanggal-produk sebagai kerangka laporan, atau membandingkan setiap catatan dengan setiap catatan lainnya. HANYA gunakan pada dataset berukuran kecil.",
+      "edge_cases": [
+        "Jika kiri = 1 juta baris dan kanan = 1 juta baris → hasil = 1 TRILIUN baris. Selalu periksa ukurannya terlebih dahulu.",
+        "Spark memerlukan pengaturan spark.sql.crossJoin.enabled=true untuk Cross Join implisit sebagai pelindung keamanan.",
+        "Performa: menggunakan operator fisik BroadcastNestedLoopJoin atau CartesianProduct — tanpa tabel hash."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Mengembalikan baris kiri yang memiliki kecocokan di kanan — kolom kanan dikecualikan",
+      "description": "Mengembalikan baris dari DataFrame KIRI yang memiliki kecocokan di sisi kanan, TETAPI tidak menyertakan kolom apa pun dari sisi kanan. Ini seperti INNER JOIN tetapi Anda hanya mendapatkan kolom dari sisi kiri. Berguna sebagai filter berdasarkan dataset lain.",
+      "when_to_use": "Gunakan sebagai filter keberadaan (existence filter): 'Berikan saya semua pelanggan yang pernah membuat setidaknya satu pesanan' — tanpa menduplikasi baris pelanggan bagi pelanggan yang memiliki banyak pesanan. Lebih efisien daripada Inner Join ketika Anda tidak membutuhkan kolom dari sisi kanan.",
+      "edge_cases": [
+        "Skema hasil hanya berisi kolom DataFrame KIRI — tidak ada kolom kanan yang muncul.",
+        "Banyak kecocokan di sisi kanan TIDAK menduplikasi baris kiri (berbeda dengan Inner Join).",
+        "Setara dengan SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Mengembalikan baris kiri yang TIDAK memiliki kecocokan di kanan",
+      "description": "Kebalikan dari Left Semi Join. Mengembalikan baris dari DataFrame KIRI di mana TIDAK ADA kecocokan di sisi kanan. Sangat cocok untuk menemukan catatan yang hilang atau yatim (orphaned records). Kolom hasil hanya berasal dari DataFrame kiri.",
+      "when_to_use": "Gunakan untuk menemukan catatan yang TIDAK ADA di tabel lain. Contoh: pelanggan yang belum pernah memesan, produk tanpa penjualan, pengguna yang belum login bulan ini. Juga berguna untuk memvalidasi kelengkapan data.",
+      "edge_cases": [
+        "Baris dengan kunci Join bernilai NULL: karena NULL != NULL, maka kunci NULL di sisi kiri akan selalu muncul dalam hasil Anti Join.",
+        "Setara dengan SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Alternatif yang jauh lebih efisien dibandingkan: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Menggabungkan (Join) sebuah DataFrame dengan dirinya sendiri",
+      "description": "Self Join adalah ketika Anda menggabungkan sebuah DataFrame dengan salinan dari dirinya sendiri. Digunakan untuk hubungan hierarkis atau membandingkan baris di dalam dataset yang sama. Memerlukan pemberian alias untuk membedakan kedua sisi.",
+      "when_to_use": "Gunakan untuk: menemukan hubungan manajer-karyawan di dalam tabel yang sama, membandingkan setiap baris dengan baris lainnya (misalnya, mencari transaksi duplikat), atau menelusuri struktur pohon/graf yang disimpan dalam satu tabel.",
+      "edge_cases": [
+        "Selalu berikan alias pada kedua sisi Self Join — tanpa alias, Spark tidak dapat menyelesaikan ambiguitas nama kolom.",
+        "Untuk hierarki yang dalam (lebih dari 2 tingkat), gunakan GraphX atau Join iteratif dengan .checkpoint() untuk menghindari ledakan Lineage.",
+        "Self Join menggunakan Inner akan menciptakan kombinasi sebesar N² — lakukan pemfilteran dengan hati-hati."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Peringkat (Ranking): row_number vs rank vs dense_rank",
+      "subtitle": "Mengelola duplikat dan protokol penomoran",
+      "description": "Fungsi-fungsi ini memberikan nomor urut ke setiap baris di dalam suatu partisi Window. Perbedaan utamanya terletak pada cara ketiganya menangani nilai seri/kembar (baris dengan nilai yang sama pada klausa order by).",
+      "when_to_use": "Gunakan row_number untuk pengidentifikasi unik, rank untuk nilai seri bergaya kompetisi (melompati nomor berikutnya), dan dense_rank untuk nilai seri berurutan (tanpa celah nomor).",
+      "edge_cases": [
+        "Jika tidak ada orderBy yang ditentukan, hasil row_number mungkin bersifat non-deterministik (berubah-ubah).",
+        "Mempartisi berdasarkan kolom dengan kardinalitas tinggi dapat menyebabkan tekanan memori (memory pressure)."
+      ]
+    },
+    "offset_functions": {
+      "title": "Offset: lag vs lead",
+      "subtitle": "Mengakses catatan sebelumnya atau berikutnya",
+      "description": "Lag dan Lead memungkinkan Anda mengakses data dari baris lain (sebelum atau sesudah baris saat ini) tanpa perlu melakukan Self-Join. Lag melihat mundur sejauh N baris, sedangkan Lead melihat maju sejauh N baris.",
+      "when_to_use": "Sangat cocok untuk analisis deret waktu (time-series): menghitung pertumbuhan bulan-ke-bulan, mendeteksi perubahan status, atau mencari selisih waktu antar peristiwa.",
+      "edge_cases": [
+        "Nilai default sangat penting untuk menghindari nilai NULL pada baris pertama atau terakhir.",
+        "Pengurutan (ordering) harus ketat agar hasil lag/lead tetap stabil."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "Metode agregasi default dan tercepat",
+      "description": "Spark membangun hash map di dalam memori di mana kuncinya adalah kolom pengelompokan (grouping) dan nilainya adalah agregat yang sedang berjalan. Metode ini beroperasi dalam dua fase: agregasi parsial (pada Executor) dan agregasi akhir (setelah Shuffle).",
+      "when_to_use": "Pilihan default untuk sebagian besar operasi groupBy. Metode ini sangat cepat selama grup unik untuk suatu partisi muat di dalam heap memori Executor.",
+      "edge_cases": [
+        "Tekanan memori: Jika terdapat terlalu banyak kunci unik, Spark mungkin akan melimpahkan data ke disk (spill to disk) atau beralih (fallback) ke SortAggregate.",
+        "Grup dengan kardinalitas tinggi: Dapat menyebabkan Shuffle yang timpang (skewed shuffles)."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "Cadangan yang aman terhadap limpahan memori (spill-safe) untuk grup berukuran masif",
+      "description": "Mengharuskan data diurutkan berdasarkan kunci pengelompokan. Spark kemudian melakukan iterasi melalui data yang telah diurutkan tersebut, mengakumulasi nilai untuk suatu kunci hingga menemukan kunci yang baru.",
+      "when_to_use": "Digunakan ketika kunci pengelompokan terlalu besar untuk hash map atau ketika data sudah terurut. Metode ini lebih lambat daripada HashAggregate tetapi lebih tangguh dalam hal memori karena tidak memerlukan hash map akses-acak.",
+      "edge_cases": [
+        "Tambahan beban (overhead) pengurutan jika data belum terurut.",
+        "Spill-safe: Tidak akan mudah mengalami crash akibat OOM seperti HashAggregate."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Format Kolumnar vs Baris (Columnar vs Row Formats)",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "Format kolumnar menyimpan data berdasarkan kolom, bukan berdasarkan baris. Ini sangat efisien untuk kueri analitik (OLAP) karena Spark dapat melewati (skip) seluruh kolom yang tidak disebutkan dalam klausa SELECT.",
+      "when_to_use": "Selalu gunakan Parquet atau Delta untuk beban kerja analitik berskala besar. Hindari penggunaan CSV/JSON untuk hal apa pun selain zona pendaratan data mentah (raw landing zones).",
+      "edge_cases": [
+        "Evolusi skema (Schema evolution) ditangani dengan lebih baik oleh Delta Lake.",
+        "Format berbasis baris (seperti Avro) lebih baik untuk penulisan dengan throughput tinggi atau streaming."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Memfilter data langsung di lapisan penyimpanan",
+      "description": "Spark mendorong operasi FILTER (klausa WHERE) dan SELECT ke bawah menuju lapisan penyimpanan. Pembaca file (Parquet/Delta) hanya mengembalikan baris dan kolom yang cocok dengan filter, sehingga mengurangi beban I/O secara drastis.",
+      "when_to_use": "Sangat penting untuk performa. Spark melakukan ini secara otomatis jika format penyimpanannya mendukung. Pastikan Anda mempartisi data berdasarkan kolom yang sering Anda gunakan sebagai filter.",
+      "edge_cases": [
+        "Pushdown tidak berfungsi untuk UDF (User-Defined Functions) atau ekspresi yang kompleks.",
+        "Filter biasanya harus berada pada kolom tingkat atas (top-level column)."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "Mengelola memori dan Lineage",
+      "description": "cache() adalah singkatan untuk persist(MEMORY_AND_DISK). Fungsi ini memberi tahu Spark untuk menyimpan DataFrame di dalam memori (dan ke disk jika tidak muat) setelah dihitung untuk pertama kalinya.",
+      "when_to_use": "Gunakan ketika DataFrame yang sama digunakan dalam beberapa Action di tahap hilir (downstream). Contoh: menghitung ringkasan sekaligus menyimpan data mentahnya."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "Memutus Lineage demi keamanan",
+      "description": "Berbeda dengan cache, checkpoint() menyimpan data ke penyimpanan yang andal (HDFS/S3) dan MEMOTONG (truncate) Lineage. Hal ini mencegah rantai Lineage menjadi terlalu panjang dan menyebabkan StackOverflowError.",
+      "when_to_use": "Gunakan dalam algoritma iteratif (Machine Learning) atau ketika Lineage menjadi sangat kompleks. Prosesnya lebih lambat daripada cache tetapi jauh lebih andal."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Otak dari Spark Modern (3.x+)",
+      "description": "AQE mengoptimalkan ulang rencana kueri DI ANTARA tahapan (Stages) kueri. Fitur ini menggunakan statistik runtime dari Stage yang telah selesai untuk memperbaiki rencana eksekusi pada Stage yang tersisa.",
+      "when_to_use": "Diaktifkan secara default di Spark 3.2+. Selalu biarkan tetap aktif. AQE menangani tiga masalah utama: Menggabungkan partisi kecil (Coalescing partitions), Mengganti strategi Join, dan Mengoptimalkan Skew Join."
+    },
+    "skew_join_optimization": {
+      "title": "Optimasi Skew Join (Skew Join Optimization)",
+      "subtitle": "Menangani distribusi data yang tidak merata",
+      "description": "Data Skew terjadi ketika satu partisi memiliki data jauh lebih banyak daripada partisi lainnya, membuat satu tugas memakan waktu 10 kali lebih lama. AQE mendeteksi hal ini dan memecah partisi yang timpang tersebut menjadi sub-partisi yang lebih kecil.",
+      "when_to_use": "Ketika Anda melihat \"straggler tasks\" (tugas yang tertinggal) di Spark UI. AQE menangani ini secara otomatis dengan mencari partisi yang berukuran jauh lebih besar daripada rata-rata."
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "Strategi orkestrasi sumber daya",
+      "description": "Spark dapat berjalan di berbagai Cluster Manager. YARN adalah manajer tradisional ekosistem Hadoop, sedangkan Kubernetes (K8s) adalah pendekatan cloud-native modern.",
+      "when_to_use": "Gunakan YARN untuk kluster Hadoop on-premise lama (legacy). Gunakan K8s untuk lingkungan cloud-native berbasis container yang memerlukan isolasi lebih baik dan penskalaan otomatis (autoscaling)."
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode",
+      "subtitle": "Di mana Driver berada?",
+      "description": "Dalam Client Mode, Driver berjalan di mesin tempat Anda mengirimkan (submit) job. Dalam Cluster Mode, Driver berjalan di dalam kluster (pada salah satu worker node).",
+      "when_to_use": "Gunakan Client Mode untuk debugging interaktif atau penggunaan notebook. Gunakan Cluster Mode untuk job produksi guna menghindari latensi jaringan dan kegagalan Driver jika mesin lokal Anda terputus."
+    },
+    "memory_regions": {
+      "title": "Memori Execution vs Storage",
+      "subtitle": "Batas yang dinamis (Dynamic boundary)",
+      "description": "Memori Execution digunakan untuk Shuffle/Join. Memori Storage digunakan untuk Caching. Keduanya berbagi kumpulan memori (pool) yang sama; jika salah satu sedang kosong, yang lain dapat meminjamnya.",
+      "when_to_use": "Sesuaikan nilai spark.memory.fraction (default 0.6) dan spark.memory.storageFraction (default 0.5) jika Anda melakukan Caching berat atau operasi Shuffle yang masif."
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Data Terlambat (Late Data)",
+      "subtitle": "Membatasi penggunaan memori pada aliran stateful (stateful streams)",
+      "description": "Watermark adalah ambang batas waktu yang bergerak mengikuti data terbaru. Jika waktu peristiwa (event time) maksimum yang terlihat adalah T, dan Watermark adalah W, maka data apa pun yang tiba dengan waktu peristiwa lebih lama dari (T - W) akan dibuang. Ini memungkinkan Spark membersihkan state lama dari memori.",
+      "when_to_use": "Wajib digunakan setiap kali Anda melakukan agregasi atau Join berdasarkan waktu peristiwa (event time) di Structured Streaming. Tanpa Watermark, state akan tumbuh tanpa batas hingga menyebabkan OOM."
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes",
+      "subtitle": "Bagaimana Spark menulis hasil aliran data",
+      "description": "1. Append: Hanya menulis baris BARU yang tidak akan pernah berubah lagi (memerlukan Watermark untuk agregasi).\n2. Update: Hanya menulis baris yang diperbarui pada pemicu (trigger) terakhir.\n3. Complete: Menulis SELURUH tabel hasil pada setiap pemicu.",
+      "when_to_use": "Append untuk menyimpan ke log. Update untuk menulis ke database. Complete untuk tabel referensi berukuran sangat kecil atau perhitungan total (total counts)."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "Memusatkan tabel dan metadata",
+      "description": "Sebuah Catalog atau Metastore bertindak sebagai direktori pusat dari semua dataset Anda. Sistem ini memetakan nama tabel (misalnya \"sales.customers\") ke file fisik (misalnya \"s3://bucket/path/parquet/\"). Hive Metastore (HMS) adalah standar open-source lama. Unity Catalog adalah standar enterprise modern untuk arsitektur Lakehouse.",
+      "when_to_use": "Selalu gunakan Catalog di lingkungan produksi. Jangan pernah bergantung sepenuhnya pada jalur file (file paths) secara langsung di dalam kode. Catalog memisahkan penyimpanan fisik dari tabel logis, sehingga memungkinkan migrasi tanpa hambatan."
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "Keamanan Tingkat Baris dan Kolom",
+      "description": "Keamanan tingkat penyimpanan (peran IAM) hanya melindungi direktori (tingkat bucket). Katalog modern seperti Unity Catalog atau AWS Lake Formation memungkinkan Anda menulis pernyataan SQL GRANT untuk membatasi akses ke baris tertentu (misalnya, hanya pengguna di \"UK\" yang dapat melihat baris UK) atau kolom tertentu (menyembunyikan nomor identitas/SSN).",
+      "when_to_use": "Diperlukan untuk menangani PII (Informasi Identitas Pribadi), kepatuhan terhadap GDPR, dan platform data multi-penyewa (multi-tenant)."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions",
+      "subtitle": "Mengelola kolom bertipe Array",
+      "description": "Array dapat diurai (unnested) menjadi beberapa baris menggunakan explode(), yang akan melipatgandakan ukuran dataset. Sebagai alternatif, Higher-Order Functions (seperti transform, filter) memungkinkan operasi map/reduce dilakukan langsung di dalam array tanpa menambah jumlah baris.",
+      "when_to_use": "Gunakan explode() jika Anda perlu melakukan group/join berdasarkan item array secara individual. Gunakan transform() jika Anda hanya perlu memodifikasi isi array (misalnya, mengalikan semua pajak dengan 1.2) sambil mempertahankan jumlah baris aslinya."
+    },
+    "json_parsing": {
+      "title": "Parsing JSON: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "Saat menangani kolom teks JSON, Anda dapat mengekstrak satu jalur tunggal sebagai string (get_json_object) atau mengubah seluruh string JSON menjadi StructType native Spark menggunakan sebuah skema (from_json).",
+      "when_to_use": "Gunakan from_json() dengan skema yang terdefinisi kapan pun memungkinkan. Fungsi ini melakukan parsing JSON cukup sekali dan menyimpannya dalam kolom bertipe, yang jauh lebih cepat daripada memanggil get_json_object() berkali-kali pada baris yang sama."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Menangani Tugas yang Lambat (Stragglers)",
+      "description": "Jika sebuah node di kluster Anda sedang bermasalah (disk rusak, gangguan jaringan), satu tugas tunggal mungkin memakan waktu 10 kali lebih lama daripada yang lain (disebut straggler). Speculative Execution mendeteksi hal ini dan meluncurkan tugas duplikat pada node yang sehat. Tugas pertama yang selesai akan diambil hasilnya.",
+      "when_to_use": "Aktifkan fitur ini (spark.speculation=true) di lingkungan cloud yang kurang stabil atau kluster yang heterogen. Berhati-hatilah jika tugas Anda menulis ke database eksternal (sifat idempotensi mutlak diperlukan!)."
+    },
+    "broadcast_hints": {
+      "title": "Join Hints",
+      "subtitle": "Mengesampingkan (Override) Catalyst Optimizer",
+      "description": "Terkadang Spark kekurangan statistik yang akurat (misalnya saat membaca dari data lake yang berantakan) dan gagal menyadari bahwa suatu tabel cukup kecil untuk di-broadcast. Sebuah Broadcast Hint memaksa Spark untuk menggunakan BroadcastHashJoin.",
+      "when_to_use": "Ketika Anda mengidentifikasi SortMergeJoin yang lambat di UI dan Anda TAHU pasti bahwa salah satu sisi tabel dapat muat dengan mudah di memori Executor (biasanya < 1GB, meskipun ambang batas default-nya adalah 10MB)."
+    },
+    "max_partition_bytes": {
+      "title": "File & maxPartitionBytes",
+      "subtitle": "Menyetel Partisi Baca (Read Partitions)",
+      "description": "Saat membaca ratusan file CSV/JSON berukuran sangat kecil, Spark akan memetakan 1 file ke 1 partisi, yang menyebabkan overhead tinggi. Anda dapat menggunakan spark.sql.files.maxPartitionBytes (default 128MB) untuk mengemas beberapa file kecil ke dalam satu partisi tunggal pada waktu BACA (READ).",
+      "when_to_use": "Jika Stage pembacaan Anda memiliki ribuan tugas yang masing-masing hanya memakan waktu 10ms, Anda mengalami sindrom file-kecil (tiny-file syndrome). Tingkatkan nilai maxPartitionBytes atau gunakan pengemasan file (file packing)."
+    }
+  }
+}

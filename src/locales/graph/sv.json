@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "Hela resan (Fullständig översikt)",
+      "description": "Komplett arkitekturkarta med 49 noder över alla 6 designfaser. Använd Fit View [ ] eller zooma in i valfritt kluster för att granska beslut och avvägningar mellan faser."
+    },
+    "infraestructura_cluster": {
+      "label": "Infrastruktur & Minne",
+      "description": "Fas 0: Definiera klusterhanteraren (Cluster Manager) och strategin för minnesallokering innan du kör någon kod. Detta sätter de operativa gränserna."
+    },
+    "contexto": {
+      "label": "Problemkontext",
+      "description": "Förstå affärsproblemet först. Dataankomsthastighet, latens-SLA:er och bearbetningsläge styr alla efterföljande Spark-beslut."
+    },
+    "datos": {
+      "label": "Dataegenskaper",
+      "description": "Datasetets storlek, fördelning (skew), lagringsformat och styrning (Catalogs & ACLs) avgör de fysiska exekveringsstrategierna."
+    },
+    "transformaciones": {
+      "label": "Transformationstyper",
+      "description": "Joins, GroupBys och komplexa datatyper (Arrays, JSON) definierar den strukturella layouten och shuffle-kostnaden för pipelinen."
+    },
+    "ejecucion": {
+      "label": "Exekveringskonsekvenser",
+      "description": "Analysera DAG:en, shuffle-påverkan och uppgiftsprestanda (speculative execution) för att förstå var de verkliga flaskhalsarna finns."
+    },
+    "optimization": {
+      "label": "Optimeringsstrategier",
+      "description": "Slutlig finjustering: partitionshantering, cachning, AQE-anpassning under körning samt manuella hints och tuning."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark Pipeline-design",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Problemkontext",
+      "pregunta_guia": "Vad behöver denna pipeline lösa och under vilka operativa begränsningar?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "Anländer data i diskreta batcher eller som en kontinuerlig ström?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "Vad är den lägsta acceptabla latensen: sekunder (micro-batch) eller millisekunder (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA:er och Latensmål",
+      "pregunta_guia": "Finns det definierade SLA:er? Vad är den högsta acceptabla bearbetningslatensen?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Avvägning: Latens vs Genomströmning (Throughput)",
+      "pregunta_guia": "Optimerar jag svarshastighet per händelse (latens) eller total bearbetad volym (throughput)?"
+    },
+    "datos": {
+      "nombre": "Dataegenskaper",
+      "pregunta_guia": "Vilka dataegenskaper formar bearbetningsstrategin?"
+    },
+    "tamano_datos": {
+      "nombre": "Datasetets storlek",
+      "pregunta_guia": "Vilken storleksordning handlar det om? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Får datasetet plats i minnet för Broadcast?",
+      "pregunta_guia": "Rymmer den lilla tabellen inom spark.sql.autoBroadcastJoinThreshold (standard 10MB)?"
+    },
+    "distribucion_datos": {
+      "nombre": "Datafördelning",
+      "pregunta_guia": "Är data jämnt fördelade över partitionerna eller finns det dominerande nycklar?"
+    },
+    "data_skew": {
+      "nombre": "Data Skew: Identifiering och Hantering",
+      "pregunta_guia": "Finns det betydligt större partitioner? Finns det nycklar med extrem kardinalitet?"
+    },
+    "formato_datos": {
+      "nombre": "Lagringsformat",
+      "pregunta_guia": "Stöder formatet kolumnbaserad läsning (columnar read), effektiv komprimering och partition pruning?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Kan filter och kolumnval tryckas ner (pushdown) till lagringsnivån innan data läses in i minnet?"
+    },
+    "transformaciones": {
+      "nombre": "Transformationstyper",
+      "pregunta_guia": "Vilken transformationskategori dominerar? Genererar den shuffle?"
+    },
+    "diseno_joins": {
+      "nombre": "Join-design",
+      "pregunta_guia": "Vilken fysisk join-strategi minimerar shuffle givet datastorlek och fördelning?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "BHJ om tabellen är liten. SHJ om data får plats i minnet. SMJ (standard) om datamängden är stor och sorterbar."
+    },
+    "agregaciones": {
+      "nombre": "Aggregeringar och GroupBy",
+      "pregunta_guia": "Kan aggregeringen föraggregeras fullständigt inom varje partition före shuffle?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate är snabbare men kräver att gruppen får plats i minnet. Sort Aggregate är spill-säker."
+    },
+    "operaciones_ventana": {
+      "nombre": "Window-operationer",
+      "pregunta_guia": "Kräver affärslogiken beräkningar över sorterade datapartitioner (ranking, lag, rullande medelvärde)?"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy-strategi",
+      "pregunta_guia": "Skapar fönsterpartitionsnyckeln en balanserad fördelning eller förstärker den data skew?"
+    },
+    "ejecucion": {
+      "nombre": "Exekveringskonsekvenser",
+      "pregunta_guia": "Hur materialiseras transformationer i DAG-stegen (stages)? Vilka flaskhalsar skapar de?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle-generering",
+      "pregunta_guia": "Hur många stage-gränser introducerar pipelinen? Hur mycket data flyttas över nätverket?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Finjustering av spark.sql.shuffle.partitions",
+      "pregunta_guia": "Ger antalet partitioner block på ~100–200MB? Är det för högt (overhead) eller för lågt (spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stage-analys",
+      "pregunta_guia": "Har DAG:en redundanta stages? Återanvänds en mellanliggande DataFrame flera gånger?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Utvärderas samma DataFrame på nytt i flera Actions?",
+      "pregunta_guia": "Om en DataFrame utlöser flera action-grenar i DAG:en utan att vara persisterad, beräknas den om helt varje gång."
+    },
+    "optimization": {
+      "nombre": "Optimeringsstrategier",
+      "pregunta_guia": "Vilka tekniker kan användas för att minska shuffle, undvika omberäkning och hantera minnet effektivt?"
+    },
+    "control_particiones": {
+      "nombre": "Fysisk Partitionskontroll",
+      "pregunta_guia": "Finns det ett behov av att omfördela data för lastbalansering eller för att minska antalet utdatafiler?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: genererar shuffle, balanserar. Coalesce: ingen shuffle, minskar endast antalet partitioner utan omfördelning."
+    },
+    "persistencia": {
+      "nombre": "Persistering av Mellanliggande DataFrame",
+      "pregunta_guia": "Är det värt att materialisera denna mellanliggande DataFrame för att undvika kostsam omberäkning?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: snabb, behåller lineage. Checkpoint: kapar DAG-lineage, skriver till disk, mer robust."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "Är AQE aktiverat (Spark 3+)? Vilka automatiska optimeringar erbjuder det för denna pipeline?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE kan ändra exekveringsplanen helt under körning: slår ihop partitioner efter shuffle (coalesce), konverterar till broadcast och delar upp snedfördelade partitioner."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "Vilken resurshanterare ska koordinera executors och hur hanteras minnet?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Klassiskt företagsval. Integrerat med HDFS- och MapReduce-ekosystem."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Modernt molnbaserat (cloud-native) val. Dockeriserade executors och isolering."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Hur kommer Spark att fördela RAM-minnet mellan exekvering (execution) och lagringscache (storage)?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "Behöver vi aggregera data över flera batcher (t.ex. rullande summor, sessionshantering)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Sen Data)",
+      "pregunta_guia": "Hur länge ska Spark vänta på sent ankommande data innan tillståndet (state) rensas?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Output Modes",
+      "pregunta_guia": "Hur skriver vi ut de aggregerade resultaten? Append, Update eller Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Data Governance & Discovery",
+      "pregunta_guia": "Hur kommer användare att hitta detta dataset och vem har behörighet att komma åt det?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Katalogsystem (Hive vs Unity)",
+      "pregunta_guia": "Bör vi registrera tabeller i en central metastore för SQL-åtkomst och spårning av lineage?"
+    },
+    "control_acceso": {
+      "nombre": "Åtkomstkontroll (ACLs)",
+      "pregunta_guia": "Behöver vi Fine-Grained Access Control (på rad-/kolumnnivå) eller räcker det med IAM på lagringsnivå?"
+    },
+    "tipos_complejos": {
+      "nombre": "Komplexa Datatyper",
+      "pregunta_guia": "Arbetar vi med nästlade strukturer (JSON, Maps, Arrays)?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "Plattar vi ut arrayer till rader (explode) eller modifierar vi dem direkt (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "Nästlad JSON-parsning",
+      "pregunta_guia": "Ska vi extrahera enskilda strängfält eller parsa hela JSON-strukturen till en Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Är vissa uppgifter (tasks) slumpmässigt mycket långsammare på grund av hårdvaruproblem eller dåliga noder?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Avancerad Tuning & Hints",
+      "pregunta_guia": "Kan vi vägleda Catalyst-optimeraren manuellt när statistiken inte räcker till?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Bör vi tvinga fram en Join-strategi om optimeraren gissar fel på tabellens storlek?"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes-tuning",
+      "pregunta_guia": "Läser vi miljontals pyttesmå filer eller enorma odelbara datablok?"
+    }
+  },
+  "edges": {
+    "e01": "Det valda bearbetningsläget avgör det uppnåeliga latensintervallet. Batch kan inte garantera latenser under en minut.",
+    "e02": "Datasetets storlek avgör direkt om Broadcast Join är tillämpligt. Över tröskelvärdet är det uteslutet.",
+    "e03": "Om datasetet klarar tröskelvärdet för broadcast är BHJ det optimala standardvalet.",
+    "e04": "En obalanserad nyckelfördelning skapar olika stora partitioner, vilket visar sig som Data Skew.",
+    "e05": "Data Skew påverkar Sort Merge Join kraftigt: en enda partition koncentrerar merparten av arbetsbelastningen.",
+    "e06": "Med AQE aktiverat delar Skew Join-optimeraren upp överbelastade partitioner under körning.",
+    "e07": "Om en fönsterpartitionsnyckel matchar en snedfördelad nyckel (skewed key) kommer motsvarande executor att överbelastas.",
+    "e08": "Varje join utom BHJ introducerar en stage-gräns och en fullständig shuffle-operation.",
+    "e09": "groupBy/agg-operationer genererar i sig en shuffle för att samla identiska rader från olika partitioner.",
+    "e10": "Window-funktioner utlöser shuffle för att partitionera och sortera data.",
+    "e11": "Datavolymen efter shuffle avgör det optimala antalet partitioner för att bibehålla block på ~128–200MB.",
+    "e12": "AQE agerar vid punkter där shuffle materialiseras och justerar dynamiskt det resulterande antalet partitioner.",
+    "e13": "Om en mellanliggande DF är källan för flera actions skapar omberäkningen ett behov av att persistera.",
+    "e14": "Kolumnbaserade format (Parquet, ORC) har inbyggt stöd för projection pushdown. CSV/JSON har det inte.",
+    "e15": "Effektiv pushdown minskar datavolymen som läses in i minnet, vilket underlättar storleksbegränsningar längre ner i flödet.",
+    "e16": "Överdriven shuffle skapar behov av fysisk partitionskontroll (repartition/coalesce).",
+    "e17": "Strikta SLA:er kan förbjuda checkpoints (skrivningar till disk) på grund av den extra latens som introduceras.",
+    "e18": "Att prioritera throughput innebär fler partitioner (parallellism). Låg latens kräver färre tasks."
+  }
+}

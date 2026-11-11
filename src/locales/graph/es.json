@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "El Recorrido Completo (Vista General)",
+      "description": "Mapa arquitectónico completo de 49 nodos a través de las 6 fases de diseño. Usa Fit View [ ] o haz zoom en cualquier clúster para inspeccionar decisiones y trade-offs entre fases."
+    },
+    "infraestructura_cluster": {
+      "label": "Infraestructura y Memoria",
+      "description": "Fase 0: Define el gestor de clúster y la estrategia de asignación de memoria antes de ejecutar cualquier código. Esto establece los límites operativos."
+    },
+    "contexto": {
+      "label": "Contexto del Problema",
+      "description": "Comprende primero el problema de negocio. La tasa de llegada de datos, los SLAs de latencia y el modo de procesamiento condicionan todas las decisiones posteriores en Spark."
+    },
+    "datos": {
+      "label": "Características de los Datos",
+      "description": "El tamaño del dataset, la distribución (Data Skew), el formato de almacenamiento y la gobernanza (Catálogos y ACLs) determinan las estrategias de ejecución física."
+    },
+    "transformaciones": {
+      "label": "Tipos de Transformación",
+      "description": "Los Joins, GroupBys y tipos de datos complejos (Arrays, JSON) definen la estructura lógica y el costo de Shuffle del pipeline."
+    },
+    "ejecucion": {
+      "label": "Implicaciones de Ejecución",
+      "description": "Analiza el DAG, el impacto del Shuffle y el rendimiento de las tareas (Speculative Execution) para entender dónde están los verdaderos cuellos de botella."
+    },
+    "optimization": {
+      "label": "Estrategias de Optimización",
+      "description": "Ajuste final: gestión de particiones, almacenamiento en caché (caching), adaptación en tiempo de ejecución con AQE y ajustes o hints manuales."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Diseño de Pipelines en Spark",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Contexto del Problema",
+      "pregunta_guia": "¿Qué necesita resolver este pipeline y bajo qué restricciones operativas?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "¿Los datos llegan en lotes discretos (Batch) o como un flujo continuo (Streaming)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Procesamiento Continuo",
+      "pregunta_guia": "¿Cuál es la latencia mínima aceptable: segundos (micro-batch) o milisegundos (continuo)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLAs y Objetivos de Latencia",
+      "pregunta_guia": "¿Existen SLAs definidos? ¿Cuál es la latencia máxima de procesamiento aceptable?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Trade-off: Latencia vs Throughput",
+      "pregunta_guia": "¿Optimizo la velocidad de respuesta por evento (latencia) o el volumen total procesado (throughput)?"
+    },
+    "datos": {
+      "nombre": "Características de los Datos",
+      "pregunta_guia": "¿Qué propiedades de los datos moldean la estrategia de procesamiento?"
+    },
+    "tamano_datos": {
+      "nombre": "Tamaño del Dataset",
+      "pregunta_guia": "¿Cuál es el orden de magnitud? ¿MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "¿Cabe el Dataset en Memoria para Broadcast?",
+      "pregunta_guia": "¿Cabe la tabla pequeña dentro de spark.sql.autoBroadcastJoinThreshold (10MB por defecto)?"
+    },
+    "distribucion_datos": {
+      "nombre": "Distribución de los Datos",
+      "pregunta_guia": "¿Están los datos balanceados entre particiones o existen claves dominantes?"
+    },
+    "data_skew": {
+      "nombre": "Detección y Manejo de Data Skew",
+      "pregunta_guia": "¿Existen particiones significativamente más grandes? ¿Hay claves con cardinalidad extrema?"
+    },
+    "formato_datos": {
+      "nombre": "Formato de Almacenamiento",
+      "pregunta_guia": "¿Soporta el formato lectura columnar, compresión eficiente y Partition Pruning?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "¿Se pueden delegar los filtros y la selección de columnas al nivel de almacenamiento antes de leer en memoria?"
+    },
+    "transformaciones": {
+      "nombre": "Tipos de Transformación",
+      "pregunta_guia": "¿Qué categoría de transformación predomina? ¿Genera Shuffle?"
+    },
+    "diseno_joins": {
+      "nombre": "Diseño de Joins",
+      "pregunta_guia": "¿Qué estrategia física de Join minimiza el Shuffle dado el tamaño y la distribución de los datos?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "BHJ si la tabla es pequeña. SHJ si cabe en memoria. SMJ (por defecto) si los datos son grandes y ordenables."
+    },
+    "agregaciones": {
+      "nombre": "Agregaciones y GroupBy",
+      "pregunta_guia": "¿Puede la agregación pre-agregarse parcialmente dentro de cada partición antes del Shuffle?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate es más rápido pero requiere que el grupo quepa en memoria. Sort Aggregate es resistente a Spill."
+    },
+    "operaciones_ventana": {
+      "nombre": "Operaciones de Ventana (Window)",
+      "pregunta_guia": "¿Requiere la lógica de negocio cálculos sobre particiones de datos ordenados (ranking, lag, media móvil)?"
+    },
+    "particionado_ventana": {
+      "nombre": "Estrategia de Window partitionBy",
+      "pregunta_guia": "¿La clave de partición de la ventana genera una distribución balanceada o amplifica el Data Skew?"
+    },
+    "ejecucion": {
+      "nombre": "Implicaciones de Ejecución",
+      "pregunta_guia": "¿Cómo se materializan las transformaciones en los Stages del DAG? ¿Qué cuellos de botella generan?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Generación de Shuffle",
+      "pregunta_guia": "¿Cuántas fronteras de Stage introduce el pipeline? ¿Cuántos datos se mueven a través de la red?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Ajuste de spark.sql.shuffle.partitions",
+      "pregunta_guia": "¿El número de particiones produce bloques de ~100-200MB? ¿Es demasiado alto (overhead) o demasiado bajo (Spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "Análisis de Stages del DAG",
+      "pregunta_guia": "¿Tiene el DAG Stages redundantes? ¿Se reutiliza un DataFrame intermedio múltiples veces?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "¿Se Reevalúa el Mismo DataFrame en Múltiples Acciones?",
+      "pregunta_guia": "Si un DataFrame dispara múltiples ramas de acción en el DAG sin ser persistido, se recalcula por completo cada vez."
+    },
+    "optimization": {
+      "nombre": "Estrategias de Optimización",
+      "pregunta_guia": "¿Qué técnicas aplican para reducir el Shuffle, evitar el recálculo y gestionar la memoria eficientemente?"
+    },
+    "control_particiones": {
+      "nombre": "Control Físico de Particiones",
+      "pregunta_guia": "¿Es necesario redistribuir los datos para balancear la carga o para reducir los archivos de salida?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: genera Shuffle y balancea. Coalesce: sin Shuffle, solo reduce particiones sin redistribuir."
+    },
+    "persistencia": {
+      "nombre": "Persistencia de DataFrames Intermedios",
+      "pregunta_guia": "¿Vale la pena materializar este DataFrame intermedio para evitar un recálculo costoso?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: rápido, conserva el linaje. Checkpoint: trunca el linaje del DAG, escribe en disco, más robusto."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "¿Está habilitado AQE (Spark 3+)? ¿Qué optimizaciones automáticas ofrece para este pipeline?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE puede cambiar el plan de ejecución en tiempo de ejecución: hace Coalesce post-Shuffle, convierte a Broadcast y divide particiones con Skew."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Gestores de Clúster (Cluster Managers)",
+      "pregunta_guia": "¿Qué gestor de recursos coordinará los ejecutores y cómo se administra la memoria?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Opción empresarial clásica. Integrado con ecosistemas HDFS y MapReduce."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Opción moderna nativa de la nube. Ejecutores contenerizados en Docker y aislamiento."
+    },
+    "gestion_memoria": {
+      "nombre": "Gestor de Memoria Unificada (Unified Memory Manager)",
+      "pregunta_guia": "¿Cómo asignará Spark la RAM entre la memoria de ejecución y las cachés de almacenamiento?"
+    },
+    "manejo_estado": {
+      "nombre": "Streaming Stateful vs Stateless",
+      "pregunta_guia": "¿Necesitamos agregar datos a través de múltiples micro-lotes (ej. totales móviles, sesionización)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Datos Tardíos)",
+      "pregunta_guia": "¿Cuánto tiempo debe esperar Spark por datos que llegan tarde antes de limpiar el estado?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Modos de Salida (Output Modes)",
+      "pregunta_guia": "¿Cómo escribimos los resultados agregados? ¿Append, Update o Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Gobernanza y Descubrimiento de Datos",
+      "pregunta_guia": "¿Cómo descubrirán los usuarios este dataset y quién tiene permiso para acceder a él?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Sistema de Catálogo (Hive vs Unity)",
+      "pregunta_guia": "¿Debemos registrar las tablas en un metastore central para acceso SQL y seguimiento de linaje?"
+    },
+    "control_acceso": {
+      "nombre": "Control de Acceso (ACLs)",
+      "pregunta_guia": "¿Necesitamos Control de Acceso de Grano Fino (nivel de fila/columna) o basta con IAM a nivel de almacenamiento?"
+    },
+    "tipos_complejos": {
+      "nombre": "Tipos de Datos Complejos",
+      "pregunta_guia": "¿Estamos trabajando con estructuras anidadas (JSON, Maps, Arrays)?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "¿Aplanamos los arrays en filas (explode) o los modificamos en línea (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "Parseo de JSON Anidado",
+      "pregunta_guia": "¿Debemos extraer campos individuales como texto o parsear todo el JSON en un Struct de Spark?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Ejecución Especulativa (Speculative Execution)",
+      "pregunta_guia": "¿Algunas tareas son aleatoriamente mucho más lentas debido a problemas de hardware o nodos defectuosos?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Ajuste Avanzado y Hints",
+      "pregunta_guia": "¿Podemos guiar manualmente al optimizador Catalyst cuando fallan las estadísticas?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "¿Debemos forzar una estrategia de Join si el optimizador estima incorrectamente el tamaño de la tabla?"
+    },
+    "max_partition_bytes": {
+      "nombre": "Ajuste de maxPartitionBytes",
+      "pregunta_guia": "¿Estamos leyendo millones de archivos diminutos o bloques enormes no divisibles?"
+    }
+  },
+  "edges": {
+    "e01": "El modo de procesamiento elegido define el rango de latencia alcanzable. Batch no puede garantizar latencias inferiores al minuto.",
+    "e02": "El tamaño del dataset dicta directamente si aplica Broadcast Join. Por encima del umbral, queda descartado.",
+    "e03": "Si el dataset cumple el umbral de Broadcast, BHJ es la elección óptima por defecto.",
+    "e04": "Una distribución de claves desbalanceada produce particiones de tamaño desigual, manifestándose como Data Skew.",
+    "e05": "El Data Skew impacta severamente al Sort Merge Join: una sola partición concentra la mayor parte de la carga de trabajo.",
+    "e06": "Con AQE habilitado, el optimizador de Skew Join divide las particiones sobrecargadas en tiempo de ejecución.",
+    "e07": "Si la clave de partición de una ventana coincide con una clave con Skew, el ejecutor correspondiente se sobrecargará.",
+    "e08": "Cualquier Join distinto de BHJ introduce una frontera de Stage y una operación completa de Shuffle.",
+    "e09": "Las operaciones groupBy/agg generan Shuffle inherentemente para reunir filas idénticas de diferentes particiones.",
+    "e10": "Las funciones de ventana (Window) disparan un Shuffle para particionar y ordenar los datos.",
+    "e11": "El volumen de datos post-Shuffle dicta el número óptimo de particiones para mantener bloques de ~128-200MB.",
+    "e12": "AQE actúa en los puntos de materialización del Shuffle, ajustando dinámicamente el número de particiones resultantes.",
+    "e13": "Si un DataFrame intermedio es la fuente de múltiples acciones, el recálculo dispara la necesidad de persistir.",
+    "e14": "Los formatos columnares (Parquet, ORC) soportan nativamente Projection Pushdown. CSV y JSON no.",
+    "e15": "Un Pushdown efectivo recorta el volumen de datos leídos en memoria, aliviando los límites de tamaño aguas abajo.",
+    "e16": "Un Shuffle excesivo impulsa la necesidad de un control físico de particiones (Repartition/Coalesce).",
+    "e17": "SLAs estrictos pueden prohibir el uso de Checkpoints (escrituras en disco) debido a la latencia adicional introducida.",
+    "e18": "Priorizar el throughput implica más particiones (paralelismo). Priorizar la latencia requiere menos tareas."
+  }
+}

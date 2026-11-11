@@ -453,12 +453,12 @@
       "id": "infraestructura_cluster",
       "nombre": "Cluster Managers",
       "tipo": "phase",
-      "nivel": 0,
-      "pregunta_guia": "Which resource manager will coordinate the executors? (YARN, K8s, Standalone)",
+      "nivel": 2,
+      "pregunta_guia": "Which resource manager will coordinate the executors and how is memory managed?",
       "subdecisiones": [
         "infra_yarn",
         "infra_k8s",
-        "infra_standalone"
+        "gestion_memoria"
       ],
       "dependencias": []
     },
@@ -466,7 +466,7 @@
       "id": "infra_yarn",
       "nombre": "Hadoop YARN",
       "tipo": "decision",
-      "nivel": 1,
+      "nivel": 3,
       "pregunta_guia": "Classic enterprise choice. Integrated with HDFS and MapReduce ecosystems.",
       "subdecisiones": [],
       "dependencias": [
@@ -478,7 +478,7 @@
       "id": "infra_k8s",
       "nombre": "Kubernetes (K8s)",
       "tipo": "decision",
-      "nivel": 1,
+      "nivel": 3,
       "pregunta_guia": "Modern cloud-native choice. Dockerized executors and isolation.",
       "subdecisiones": [],
       "dependencias": [
@@ -490,13 +490,12 @@
       "id": "gestion_memoria",
       "nombre": "Unified Memory Manager",
       "tipo": "decision",
-      "nivel": 0,
+      "nivel": 3,
       "pregunta_guia": "How will Spark allocate RAM between execution and storage caches?",
-      "subdecisiones": [
-        "memoria_ejecucion",
-        "memoria_storage"
+      "subdecisiones": [],
+      "dependencias": [
+        "infraestructura_cluster"
       ],
-      "dependencias": [],
       "reference_section_id": "memory_management"
     },
     {
@@ -679,105 +678,105 @@
       "id": "e02",
       "origen": "tamano_datos",
       "destino": "candidato_broadcast",
-      "tipo": "determinante",
+      "tipo": "determinant",
       "descripcion": "Dataset size directly dictates if Broadcast Join applies. Above threshold, it is ruled out."
     },
     {
       "id": "e03",
       "origen": "candidato_broadcast",
       "destino": "estrategia_fisica_join",
-      "tipo": "habilitador",
+      "tipo": "enabler",
       "descripcion": "If dataset meets the broadcast threshold, BHJ is the optimal default choice."
     },
     {
       "id": "e04",
       "origen": "distribucion_datos",
       "destino": "data_skew",
-      "tipo": "causa_efecto",
+      "tipo": "cause_effect",
       "descripcion": "An unbalanced key distribution produces unequally sized partitions, manifesting as Data Skew."
     },
     {
       "id": "e05",
       "origen": "data_skew",
       "destino": "estrategia_fisica_join",
-      "tipo": "riesgo_ejecucion",
+      "tipo": "execution_risk",
       "descripcion": "Data Skew acts severely upon Sort Merge Join: a single partition concentrates most workload."
     },
     {
       "id": "e06",
       "origen": "data_skew",
       "destino": "capacidades_aqe",
-      "tipo": "mitigacion",
+      "tipo": "mitigation",
       "descripcion": "With AQE enabled, the Skew Join optimizer splits overloaded partitions at runtime."
     },
     {
       "id": "e07",
       "origen": "data_skew",
       "destino": "particionado_ventana",
-      "tipo": "riesgo_ejecucion",
+      "tipo": "execution_risk",
       "descripcion": "If a window partition key matches a skewed key, the corresponding executor will overload."
     },
     {
       "id": "e08",
       "origen": "diseno_joins",
       "destino": "impacto_shuffle",
-      "tipo": "causa_efecto",
+      "tipo": "cause_effect",
       "descripcion": "Any join other than BHJ introduces a stage boundary and a full shuffle operation."
     },
     {
       "id": "e09",
       "origen": "agregaciones",
       "destino": "impacto_shuffle",
-      "tipo": "causa_efecto",
+      "tipo": "cause_effect",
       "descripcion": "groupBy/agg operations inherently generate shuffle to gather identical rows from different partitions."
     },
     {
       "id": "e10",
       "origen": "operaciones_ventana",
       "destino": "impacto_shuffle",
-      "tipo": "causa_efecto",
+      "tipo": "cause_effect",
       "descripcion": "Window functions trigger shuffle to partition and sort data."
     },
     {
       "id": "e11",
       "origen": "tamano_datos",
       "destino": "config_particiones_shuffle",
-      "tipo": "determinante",
+      "tipo": "determinant",
       "descripcion": "Post-shuffle data volume dictates the optimal number of partitions to maintain ~128-200MB blocks."
     },
     {
       "id": "e12",
       "origen": "impacto_shuffle",
       "destino": "capacidades_aqe",
-      "tipo": "habilitador",
+      "tipo": "enabler",
       "descripcion": "AQE acts at shuffle materialization points, dynamically adjusting resulting partition count."
     },
     {
       "id": "e13",
       "origen": "recomputo_dataframe",
       "destino": "persistencia",
-      "tipo": "disparador",
+      "tipo": "trigger",
       "descripcion": "If an intermediate DF is the source for multiple actions, recomputation triggers the need to persist."
     },
     {
       "id": "e14",
       "origen": "formato_datos",
       "destino": "pushdown_lectura",
-      "tipo": "habilitador",
+      "tipo": "enabler",
       "descripcion": "Columnar formats (Parquet, ORC) natively support projection pushdown. CSV/JSON do not."
     },
     {
       "id": "e15",
       "origen": "pushdown_lectura",
       "destino": "tamano_datos",
-      "tipo": "mitigacion",
+      "tipo": "mitigation",
       "descripcion": "Effective pushdown trims data volume read into memory, alleviating downstream size limits."
     },
     {
       "id": "e16",
       "origen": "impacto_shuffle",
       "destino": "control_particiones",
-      "tipo": "disparador",
+      "tipo": "trigger",
       "descripcion": "Excessive shuffle prompts the need for physical partition control (repartition/coalesce)."
     },
     {
@@ -791,7 +790,7 @@
       "id": "e18",
       "origen": "trade_latency_throughput",
       "destino": "config_particiones_shuffle",
-      "tipo": "determinante",
+      "tipo": "determinant",
       "descripcion": "Prioritizing throughput implies more partitions (parallelism). Latency requires fewer tasks."
     }
   ]

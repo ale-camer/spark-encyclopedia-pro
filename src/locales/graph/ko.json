@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "전체 여정 (전체 개요)",
+      "description": "6개 설계 단계 전반에 걸친 49개 노드의 전체 아키텍처 맵입니다. Fit View [ ]를 사용하거나 특정 클러스터를 확대하여 의사결정과 단계 간 트레이드오프를 확인하세요."
+    },
+    "infraestructura_cluster": {
+      "label": "인프라 및 메모리",
+      "description": "0단계: 코드를 실행하기 전에 클러스터 매니저(Cluster Manager)와 메모리 할당 전략을 정의합니다. 이는 운영 한계를 결정합니다."
+    },
+    "contexto": {
+      "label": "문제 컨텍스트",
+      "description": "먼저 비즈니스 문제를 이해해야 합니다. 데이터 유입 속도, 지연 시간(Latency) SLA, 처리 모드가 이후의 모든 Spark 의사결정을 좌우합니다."
+    },
+    "datos": {
+      "label": "데이터 특성",
+      "description": "데이터셋 크기, 분포(Data Skew), 저장 포맷 및 거버넌스(Catalogs & ACLs)가 물리적 실행 전략을 결정합니다."
+    },
+    "transformaciones": {
+      "label": "변환(Transformation) 유형",
+      "description": "Join, GroupBy 및 복합 데이터 타입(Arrays, JSON)은 파이프라인의 구조적 레이아웃과 Shuffle 비용을 정의합니다."
+    },
+    "ejecucion": {
+      "label": "실행 영향",
+      "description": "DAG, Shuffle 영향 및 태스크 성능(Speculative Execution)을 분석하여 실제 병목 지점이 어디인지 파악합니다."
+    },
+    "optimization": {
+      "label": "최적화 전략",
+      "description": "최종 튜닝: 파티션 관리, 캐싱(Caching), AQE 런타임 적응형 최적화 및 수동 힌트/튜닝."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark 파이프라인 설계",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "문제 컨텍스트",
+      "pregunta_guia": "이 파이프라인은 무엇을 해결해야 하며 어떤 운영 제약 조건 하에 있는가?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "데이터가 이산적인 배치 단위로 도착하는가, 아니면 연속적인 스트림으로 도착하는가?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "허용 가능한 최소 지연 시간은 얼마인가: 초 단위(Micro-batch)인가, 밀리초 단위(Continuous)인가?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA 및 지연 시간 목표",
+      "pregunta_guia": "정의된 SLA가 있는가? 허용 가능한 최대 처리 지연 시간은 얼마인가?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "트레이드오프: 지연 시간(Latency) vs 처리량(Throughput)",
+      "pregunta_guia": "이벤트당 응답 속도(지연 시간)를 최적화할 것인가, 아니면 총 처리 볼륨(처리량)을 최적화할 것인가?"
+    },
+    "datos": {
+      "nombre": "데이터 특성",
+      "pregunta_guia": "어떤 데이터 속성이 처리 전략을 결정하는가?"
+    },
+    "tamano_datos": {
+      "nombre": "데이터셋 크기",
+      "pregunta_guia": "데이터의 규모는 어느 정도인가? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "데이터셋이 Broadcast를 위해 메모리에 들어갈 수 있는가?",
+      "pregunta_guia": "작은 테이블이 spark.sql.autoBroadcastJoinThreshold(기본값 10MB) 이내에 들어가는가?"
+    },
+    "distribucion_datos": {
+      "nombre": "데이터 분포",
+      "pregunta_guia": "데이터가 파티션 간에 균등하게 분산되어 있는가, 아니면 지배적인 키가 존재하는가?"
+    },
+    "data_skew": {
+      "nombre": "Data Skew 감지 및 처리",
+      "pregunta_guia": "유난히 큰 파티션이 존재하는가? 극단적인 카디널리티나 쏠림을 가진 키가 있는가?"
+    },
+    "formato_datos": {
+      "nombre": "저장 포맷",
+      "pregunta_guia": "해당 포맷이 컬럼형 읽기, 효율적인 압축 및 파티션 프루닝(Partition Pruning)을 지원하는가?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "메모리로 읽어 들이기 전에 필터와 컬럼 선택을 스토리지 계층으로 푸시다운할 수 있는가?"
+    },
+    "transformaciones": {
+      "nombre": "변환(Transformation) 유형",
+      "pregunta_guia": "어떤 변환 카테고리가 주를 이루는가? Shuffle을 유발하는가?"
+    },
+    "diseno_joins": {
+      "nombre": "Join 설계",
+      "pregunta_guia": "데이터 크기와 분포를 고려할 때 어떤 물리적 Join 전략이 Shuffle을 최소화하는가?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "테이블이 작으면 BHJ. 데이터가 메모리에 들어가면 SHJ. 데이터가 크고 정렬 가능하면 SMJ(기본값)."
+    },
+    "agregaciones": {
+      "nombre": "집계 및 GroupBy",
+      "pregunta_guia": "Shuffle 전에 각 파티션 내에서 사전 집계(부분 집계)가 완전히 이루어질 수 있는가?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate는 더 빠르지만 그룹이 메모리에 들어가야 합니다. Sort Aggregate는 디스크 스필에 안전(Spill-safe)합니다."
+    },
+    "operaciones_ventana": {
+      "nombre": "윈도우 연산 (Window Operations)",
+      "pregunta_guia": "비즈니스 로직상 정렬된 데이터 파티션에 대한 계산(순위, lag, 이동 평균 등)이 필요한가?"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy 전략",
+      "pregunta_guia": "윈도우 파티션 키가 균등한 분포를 생성하는가, 아니면 Data Skew를 증폭시키는가?"
+    },
+    "ejecucion": {
+      "nombre": "실행 영향",
+      "pregunta_guia": "변환 연산이 DAG Stage에서 어떻게 구체화되는가? 어떤 병목 현상을 유발하는가?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle 발생",
+      "pregunta_guia": "파이프라인이 몇 개의 Stage 경계를 도입하는가? 네트워크를 통해 얼마나 많은 데이터가 이동하는가?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "spark.sql.shuffle.partitions 튜닝",
+      "pregunta_guia": "파티션 수가 ~100-200MB 블록을 형성하는가? 너무 높아서 오버헤드가 발생하거나 너무 낮아서 Spill이 발생하지는 않는가?"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stage 분석",
+      "pregunta_guia": "DAG에 중복된 Stage가 있는가? 중간 DataFrame이 여러 번 재사용되는가?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "동일한 DataFrame이 여러 Action에서 재평가되는가?",
+      "pregunta_guia": "DataFrame이 영속화(Persist)되지 않은 채 DAG에서 여러 Action 분기를 트리거하면 매번 전체가 다시 계산됩니다."
+    },
+    "optimization": {
+      "nombre": "최적화 전략",
+      "pregunta_guia": "Shuffle을 줄이고, 재계산을 방지하며, 메모리를 효율적으로 관리하기 위해 어떤 기법을 적용할 수 있는가?"
+    },
+    "control_particiones": {
+      "nombre": "물리적 파티션 제어",
+      "pregunta_guia": "로드 밸런싱을 위해 데이터를 재분배하거나 출력 파일 수를 줄일 필요가 있는가?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: Shuffle을 발생시키며 균형을 맞춥니다. Coalesce: Shuffle 없이 재분배하지 않고 파티션 수만 줄입니다."
+    },
+    "persistencia": {
+      "nombre": "중간 DataFrame 영속화 (Persistence)",
+      "pregunta_guia": "비용이 큰 재계산을 피하기 위해 이 중간 DataFrame을 구체화(저장)할 가치가 있는가?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: 빠르고 계보(Lineage)를 유지합니다. Checkpoint: DAG 계보를 절단하고 디스크에 기록하여 더 견고합니다."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "AQE가 활성화되어 있는가(Spark 3+)? 이 파이프라인에 어떤 자동 최적화를 제공하는가?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE는 런타임에 실행 계획을 완전히 변경할 수 있습니다: Shuffle 후 파티션 병합, Broadcast 변환 및 Skew 파티션 분할."
+    },
+    "infraestructura_cluster": {
+      "nombre": "클러스터 매니저 (Cluster Managers)",
+      "pregunta_guia": "어떤 리소스 매니저가 Executor를 조율하며 메모리는 어떻게 관리되는가?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "전통적인 엔터프라이즈 선택지입니다. HDFS 및 MapReduce 생태계와 통합되어 있습니다."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "현대적인 클라우드 네이티브 선택지입니다. 컨테이너화된 Executor와 격리성을 제공합니다."
+    },
+    "gestion_memoria": {
+      "nombre": "통합 메모리 매니저 (Unified Memory Manager)",
+      "pregunta_guia": "Spark는 실행(Execution)과 스토리지 캐시(Storage) 간에 RAM을 어떻게 할당하는가?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "여러 배치에 걸쳐 데이터를 집계해야 하는가(예: 누적 합계, 세션화)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (지연 데이터 처리)",
+      "pregunta_guia": "상태를 정리하기 전에 늦게 도착하는 데이터를 Spark가 얼마나 기다려야 하는가?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "출력 모드 (Output Modes)",
+      "pregunta_guia": "집계된 결과를 어떻게 기록할 것인가? Append, Update, 또는 Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "데이터 거버넌스 및 탐색",
+      "pregunta_guia": "사용자가 이 데이터셋을 어떻게 발견하며 누구에게 접근 권한이 부여되는가?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Catalog 시스템 (Hive vs Unity)",
+      "pregunta_guia": "SQL 접근 및 계보 추적을 위해 중앙 Metastore에 테이블을 등록해야 하는가?"
+    },
+    "control_acceso": {
+      "nombre": "접근 제어 (ACLs)",
+      "pregunta_guia": "세밀한 접근 제어(행/열 수준)가 필요한가, 아니면 스토리지 수준 IAM으로 충분한가?"
+    },
+    "tipos_complejos": {
+      "nombre": "복합 데이터 타입 (Complex Data Types)",
+      "pregunta_guia": "중첩된 구조(JSON, Maps, Arrays)를 다루고 있는가?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "배열을 여러 행으로 펼칠 것인가(explode), 아니면 인라인으로 수정할 것인가(transform SQL 고차 함수)?"
+    },
+    "extraccion_json": {
+      "nombre": "중첩 JSON 파싱",
+      "pregunta_guia": "단일 문자열 필드를 추출해야 하는가, 아니면 전체 JSON을 Spark Struct로 파싱해야 하는가?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution (추측 실행)",
+      "pregunta_guia": "하드웨어 문제나 불량 노드로 인해 일부 태스크가 무작위로 훨씬 느리게 실행되는가?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "고급 튜닝 및 Hints",
+      "pregunta_guia": "통계 정보가 부정확할 때 Catalyst 옵티마이저를 수동으로 유도할 수 있는가?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "옵티마이저가 테이블 크기를 잘못 추정한 경우 Join 전략을 강제해야 하는가?"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes 튜닝",
+      "pregunta_guia": "수백만 개의 작은 파일을 읽고 있는가, 아니면 분할할 수 없는 거대한 청크를 읽고 있는가?"
+    }
+  },
+  "edges": {
+    "e01": "선택한 처리 모드가 달성 가능한 지연 시간 범위를 정의합니다. Batch는 1분 미만의 지연 시간을 보장할 수 없습니다.",
+    "e02": "데이터셋 크기는 Broadcast Join 적용 여부를 직접 결정합니다. 임계값을 초과하면 배제됩니다.",
+    "e03": "데이터셋이 브로드캐스트 임계값을 충족하면 BHJ가 최적의 기본 선택입니다.",
+    "e04": "불균형한 키 분포는 크기가 일정하지 않은 파티션을 생성하며, 이는 Data Skew로 나타납니다.",
+    "e05": "Data Skew는 Sort Merge Join에 심각한 영향을 미칩니다. 단일 파티션에 대부분의 작업 부하가 집중됩니다.",
+    "e06": "AQE가 활성화되면 Skew Join 옵티마이저가 런타임에 과부하된 파티션을 분할합니다.",
+    "e07": "윈도우 파티션 키가 편향된(Skewed) 키와 일치하면 해당 Executor에 과부하가 걸립니다.",
+    "e08": "BHJ 이외의 모든 Join은 Stage 경계와 전체 Shuffle 작업을 수반합니다.",
+    "e09": "groupBy/agg 연산은 서로 다른 파티션의 동일한 행을 모으기 위해 본질적으로 Shuffle을 발생시킵니다.",
+    "e10": "Window 함수는 데이터를 파티셔닝하고 정렬하기 위해 Shuffle을 트리거합니다.",
+    "e11": "Shuffle 이후의 데이터 볼륨은 ~128-200MB 블록을 유지하기 위한 최적의 파티션 수를 결정합니다.",
+    "e12": "AQE는 Shuffle 구체화 지점에서 작동하여 결과 파티션 수를 동적으로 조정합니다.",
+    "e13": "중간 DataFrame이 여러 Action의 소스인 경우 재계산을 방지하기 위해 영속화(Persist)가 필요합니다.",
+    "e14": "컬럼형 포맷(Parquet, ORC)은 Projection Pushdown을 기본 지원하지만 CSV/JSON은 지원하지 않습니다.",
+    "e15": "효과적인 Pushdown은 메모리로 읽는 데이터 볼륨을 줄여 다운스트림 크기 제한을 완화합니다.",
+    "e16": "과도한 Shuffle은 물리적 파티션 제어(Repartition/Coalesce)의 필요성을 촉발합니다.",
+    "e17": "엄격한 SLA는 추가적인 지연 시간을 유발하는 디스크 쓰기(Checkpoint)를 허용하지 않을 수 있습니다.",
+    "e18": "처리량(Throughput)을 우선시하면 더 많은 파티션(병렬성)이 필요하고, 지연 시간(Latency)을 우선시하면 더 적은 태스크가 필요합니다."
+  }
+}

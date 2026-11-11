@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "De Volledige Reis (Totaaloverzicht)",
+      "description": "Volledige architectuurkaart met 49 knooppunten over alle 6 ontwerpfases. Gebruik Fit View [ ] of zoom in op een cluster om beslissingen en fase-overschrijdende afwegingen (trade-offs) te inspecteren."
+    },
+    "infraestructura_cluster": {
+      "label": "Infrastructuur & Geheugen",
+      "description": "Fase 0: Definieer de cluster manager en de strategie voor geheugentoewijzing voordat je code uitvoert. Dit bepaalt de operationele limieten."
+    },
+    "contexto": {
+      "label": "Probleemcontext",
+      "description": "Begrijp eerst het bedrijfsprobleem. De snelheid waarmee data binnenkomt, latency-SLA's en de verwerkingsmodus bepalen alle volgende Spark-beslissingen."
+    },
+    "datos": {
+      "label": "Data-eigenschappen",
+      "description": "Datasetgrootte, verdeling (skew), opslagformaat en governance (Catalogs & ACLs) bepalen de fysieke uitvoeringsstrategieën."
+    },
+    "transformaciones": {
+      "label": "Transformatietypen",
+      "description": "Joins, GroupBys en complexe datatypen (Arrays, JSON) bepalen de structurele opzet en de shuffle-kosten van de pipeline."
+    },
+    "ejecucion": {
+      "label": "Uitvoeringsimplicaties",
+      "description": "Analyseer de DAG, de shuffle-impact en de taakprestaties (speculative execution) om te begrijpen waar de echte knelpunten zitten."
+    },
+    "optimization": {
+      "label": "Optimalisatiestrategieën",
+      "description": "Laatste afstemming: partitiebeheer, caching, AQE-runtime-aanpassing en handmatige hints/tuning."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark Pipeline-ontwerp",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Probleemcontext",
+      "pregunta_guia": "Wat moet deze pipeline oplossen en onder welke operationele randvoorwaarden?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "Komen de gegevens binnen in discrete batches of als een continue stroom (stream)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "Wat is de minimaal acceptabele latentie: seconden (micro-batch) of milliseconden (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA's en Latentiedoelen",
+      "pregunta_guia": "Zijn er gedefinieerde SLA's? Wat is de maximaal acceptabele verwerkingslatentie?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Trade-off: Latentie vs Verwerkingscapaciteit (Throughput)",
+      "pregunta_guia": "Optimaliseer ik voor reactiesnelheid per event (latentie) of voor het totale verwerkte volume (throughput)?"
+    },
+    "datos": {
+      "nombre": "Data-eigenschappen",
+      "pregunta_guia": "Welke eigenschappen van de data bepalen de verwerkingsstrategie?"
+    },
+    "tamano_datos": {
+      "nombre": "Datasetgrootte",
+      "pregunta_guia": "Wat is de orde van grootte? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Past de Dataset in het Geheugen voor Broadcast?",
+      "pregunta_guia": "Past de kleine tabel binnen spark.sql.autoBroadcastJoinThreshold (standaard 10MB)?"
+    },
+    "distribucion_datos": {
+      "nombre": "Dataverdeling",
+      "pregunta_guia": "Zijn de gegevens evenwichtig verdeeld over partities of zijn er dominante sleutels?"
+    },
+    "data_skew": {
+      "nombre": "Data Skew Detectie en Afhandeling",
+      "pregunta_guia": "Zijn er aanzienlijk grotere partities? Zijn er sleutels met een extreme kardinaliteit?"
+    },
+    "formato_datos": {
+      "nombre": "Opslagformaat",
+      "pregunta_guia": "Ondersteunt het formaat kolomgeoriënteerd lezen (columnar read), efficiënte compressie en partition pruning?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Kunnen filters en kolomselecties worden doorgestuurd naar de opslaglaag voordat ze in het geheugen worden ingelezen?"
+    },
+    "transformaciones": {
+      "nombre": "Transformatietypen",
+      "pregunta_guia": "Welke transformatiecategorie domineert? Genereert deze een shuffle?"
+    },
+    "diseno_joins": {
+      "nombre": "Join-ontwerp",
+      "pregunta_guia": "Welke fysieke join-strategie minimaliseert shuffle gezien de datagrootte en -verdeling?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "BHJ als de tabel klein is. SHJ als de data in het geheugen past. SMJ (standaard) als de data groot en sorteerbaar is."
+    },
+    "agregaciones": {
+      "nombre": "Aggregaties en GroupBy",
+      "pregunta_guia": "Kan de aggregatie volledig vooraf binnen elke partitie worden geaggregeerd vóór de shuffle?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate is sneller, maar vereist dat de groep in het geheugen past. Sort Aggregate is spill-veilig."
+    },
+    "operaciones_ventana": {
+      "nombre": "Window-operaties",
+      "pregunta_guia": "Vereist de bedrijfslogica berekeningen over gesorteerde datapartities (ranking, lag, voortschrijdend gemiddelde)?"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy-strategie",
+      "pregunta_guia": "Zorgt de window-partitiesleutel voor een evenwichtige verdeling of versterkt deze de data skew?"
+    },
+    "ejecucion": {
+      "nombre": "Uitvoeringsimplicaties",
+      "pregunta_guia": "Hoe worden transformaties gematerialiseerd in de DAG-stages? Welke knelpunten veroorzaken ze?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle-generatie",
+      "pregunta_guia": "Hoeveel stage-grenzen introduceert de pipeline? Hoeveel data wordt er over het netwerk verplaatst?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Tuning van spark.sql.shuffle.partitions",
+      "pregunta_guia": "Levert het aantal partities blokken op van ~100-200MB? Is het aantal te hoog (overhead) of te laag (spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stage-analyse",
+      "pregunta_guia": "Bevat de DAG overbodige stages? Wordt een tussentijds DataFrame meerdere keren hergebruikt?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Wordt hetzelfde DataFrame opnieuw berekend in meerdere Actions?",
+      "pregunta_guia": "Als een DataFrame meerdere action-vertakkingen in de DAG aanroept zonder gepersisteerd te zijn, wordt het elke keer volledig opnieuw berekend."
+    },
+    "optimization": {
+      "nombre": "Optimalisatiestrategieën",
+      "pregunta_guia": "Welke technieken zijn van toepassing om shuffle te verminderen, herberekening te voorkomen en geheugen efficiënt te beheren?"
+    },
+    "control_particiones": {
+      "nombre": "Fysieke Partitiecontrole",
+      "pregunta_guia": "Is het nodig om data te herverdelen voor load balancing of om het aantal uitvoerbestanden te beperken?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: genereert shuffle, zorgt voor balans. Coalesce: geen shuffle, vermindert alleen partities zonder te herverdelen."
+    },
+    "persistencia": {
+      "nombre": "Persistentie van Tussentijdse DataFrames",
+      "pregunta_guia": "Is het de moeite waard om dit tussentijdse DataFrame te materialiseren om kostbare herberekening te voorkomen?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: snel, behoudt lineage. Checkpoint: kapt de DAG-lineage af, schrijft naar schijf, robuuster."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "Is AQE ingeschakeld (Spark 3+)? Welke automatische optimalisaties biedt het voor deze pipeline?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE kan het uitvoeringsplan tijdens runtime volledig wijzigen: voegt partities na shuffle samen (coalesce), zet om naar broadcast en splitst scheve partities."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "Welke resource manager coördineert de executors en hoe wordt het geheugen beheerd?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Klassieke enterprise-keuze. Geïntegreerd met HDFS- en MapReduce-ecosystemen."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Moderne cloud-native keuze. Gecontaineriseerde executors en isolatie."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Hoe verdeelt Spark het RAM-geheugen tussen uitvoering (execution) en opslagcaches (storage)?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "Moeten we data aggregeren over meerdere batches heen (bijv. voortschrijdende totalen, sessievorming)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Late Data)",
+      "pregunta_guia": "Hoe lang moet Spark wachten op laat binnenkomende data voordat de status (state) wordt gewist?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Output Modes",
+      "pregunta_guia": "Hoe schrijven we de geaggregeerde resultaten weg? Append, Update of Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Data Governance & Discovery",
+      "pregunta_guia": "Hoe vinden gebruikers deze dataset en wie heeft toestemming voor toegang?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Catalogussysteem (Hive vs Unity)",
+      "pregunta_guia": "Moeten we tabellen registreren in een centrale metastore voor SQL-toegang en lineage-tracking?"
+    },
+    "control_acceso": {
+      "nombre": "Toegangscontrole (ACLs)",
+      "pregunta_guia": "Hebben we Fine-Grained Access Control (op rij-/kolomniveau) nodig of is IAM op opslagniveau voldoende?"
+    },
+    "tipos_complejos": {
+      "nombre": "Complexe Datatypen",
+      "pregunta_guia": "Werken we met geneste structuren (JSON, Maps, Arrays)?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "Slaan we arrays plat tot rijen (explode) of passen we ze inline aan (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "Geneste JSON Parsen",
+      "pregunta_guia": "Moeten we losse tekstvelden extraheren of de volledige JSON parsen naar een Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Zijn sommige taken willekeurig veel trager door hardwareproblemen of slechte nodes?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Geavanceerde Tuning & Hints",
+      "pregunta_guia": "Kunnen we de Catalyst optimizer handmatig aansturen wanneer statistieken tekortschieten?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Moeten we een Join-strategie afdwingen als de optimizer de tabelgrootte verkeerd inschat?"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes Tuning",
+      "pregunta_guia": "Lezen we miljoenen piepkleine bestanden of enorme niet-splitsbare datablokken?"
+    }
+  },
+  "edges": {
+    "e01": "De gekozen verwerkingsmodus bepaalt het haalbare latentiebereik. Batch kan geen latenties van minder dan een minuut garanderen.",
+    "e02": "De grootte van de dataset bepaalt direct of Broadcast Join van toepassing is. Boven de drempelwaarde valt deze optie af.",
+    "e03": "Als de dataset binnen de broadcast-drempel valt, is BHJ standaard de optimale keuze.",
+    "e04": "Een onevenwichtige sleutelverdeling zorgt voor partities van ongelijke grootte, wat zich uit als Data Skew.",
+    "e05": "Data Skew heeft ernstige gevolgen voor Sort Merge Join: één enkele partitie krijgt het grootste deel van de werklast.",
+    "e06": "Wanneer AQE is ingeschakeld, splitst de Skew Join-optimizer overbelaste partities tijdens runtime op.",
+    "e07": "Als een window-partitiesleutel overeenkomt met een scheef verdeelde sleutel (skewed key), raakt de bijbehorende executor overbelast.",
+    "e08": "Elke join anders dan BHJ introduceert een stage-grens en een volledige shuffle-operatie.",
+    "e09": "groupBy/agg-operaties genereren inherent een shuffle om identieke rijen uit verschillende partities samen te brengen.",
+    "e10": "Window-functies veroorzaken een shuffle om data te partitioneren en te sorteren.",
+    "e11": "Het datavolume na de shuffle bepaalt het optimale aantal partities om blokken van ~128-200MB te behouden.",
+    "e12": "AQE grijpt in op punten waar shuffles worden gematerialiseerd en past dynamisch het resulterende aantal partities aan.",
+    "e13": "Als een tussentijds DataFrame de bron is voor meerdere actions, leidt herberekening tot de noodzaak om te persisteren.",
+    "e14": "Kolomgeoriënteerde formaten (Parquet, ORC) ondersteunen standaard projection pushdown. CSV/JSON doen dat niet.",
+    "e15": "Effectieve pushdown beperkt het datavolume dat in het geheugen wordt gelezen, wat verderop in de pipeline groottelimieten verlicht.",
+    "e16": "Buitensporige shuffle vraagt om fysieke partitiecontrole (repartition/coalesce).",
+    "e17": "Strikte SLA's kunnen checkpoints (schrijven naar schijf) uitsluiten vanwege de extra geïntroduceerde latentie.",
+    "e18": "Prioriteit geven aan throughput impliceert meer partities (parallellisme). Lage latentie vereist minder taken."
+  }
+}

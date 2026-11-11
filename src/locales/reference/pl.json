@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Typy złączeń (Joins)",
+      "description": "Wszystkie strategie złączeń dostępne w PySpark. Zrozumienie zachowania każdego typu, logiki wyboru wierszy oraz fizycznego wykonania jest kluczowe dla poprawnych i wydajnych potoków danych."
+    },
+    "window_functions": {
+      "title": "Funkcje okienkowe (Window Functions)",
+      "description": "Zaawansowane operacje analityczne obliczające wartości na zbiorze wierszy powiązanych z wierszem bieżącym. Obejmują rankingi, przesunięcia (offsets) oraz agregacje kroczące."
+    },
+    "aggregations": {
+      "title": "Agregacje",
+      "description": "W jaki sposób Spark oblicza statystyki podsumowujące dla grup. Zrozumienie różnic między Hash a Sort Aggregate oraz wpływu grupowania na shuffle jest kluczowe przy dużych zbiorach danych."
+    },
+    "storage_and_pushdown": {
+      "title": "Pamięć masowa i Pushdown",
+      "description": "Jak układ danych na dysku wpływa na wydajność Sparka. Zoptymalizowane formaty (Parquet/Delta) pozwalają Sparkowi odczytywać tylko te dane, których faktycznie potrzebuje."
+    },
+    "persistence_and_caching": {
+      "title": "Utrwalanie i buforowanie (Persistence & Caching)",
+      "description": "Jak wielokrotnie wykorzystywać pośrednie ramki DataFrame bez ponownego przeliczania całej historii pochodzenia (lineage). Kluczowe dla algorytmów iteracyjnych i wielu akcji."
+    },
+    "aqe_optimizations": {
+      "title": "Optymalizacja bazowa i AQE",
+      "description": "Jak Spark dostosowuje plan wykonania w czasie rzeczywistym (runtime) na podstawie rzeczywistych statystyk danych. Adaptive Query Execution (AQE) to największy skok wydajności we współczesnym Sparku."
+    },
+    "infrastructure": {
+      "title": "Infrastruktura i wdrażanie (Deployment)",
+      "description": "Jak Spark łączy się z menedżerami klastrów (Cluster Managers) i zarządza cyklem życia aplikacji. To fundament każdego zadania Spark."
+    },
+    "memory_management": {
+      "title": "Zunifikowane zarządzanie pamięcią (Unified Memory Management)",
+      "description": "W jaki sposób Spark dzieli pamięć RAM egzekutora pomiędzy obliczenia (Execution) a pamięć podręczną (Storage). Spark 3.x stosuje ujednolicone podejście."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Zaawansowane koncepcje niezawodnego przetwarzania strumieni danych, zarządzania stanem (state) oraz obsługi spóźnionych rekordów docierających poza kolejnością."
+    },
+    "data_governance": {
+      "title": "Data Governance i bezpieczeństwo",
+      "description": "Jak Spark integruje się z katalogami (Catalogs), zapewniając wyszukiwanie danych (data discovery), egzekwowanie schematu i szczegółową kontrolę dostępu."
+    },
+    "complex_types": {
+      "title": "Złożone typy danych",
+      "description": "Praca z danymi nieskalarnymi, takimi jak tablice (Arrays), struktury (Structs), mapy (Maps) i surowe ciągi JSON. Niezbędne dla nowoczesnych źródeł API oraz NoSQL."
+    },
+    "execution_internals": {
+      "title": "Wewnętrzne mechanizmy wykonania i Shuffle",
+      "description": "Pod maską silnika wykonawczego Spark. Zrozumienie projektu Tungsten, zarządzania pamięcią i spekulatywnego wykonywania zadań (task speculation)."
+    },
+    "optimizations_extra": {
+      "title": "Zaawansowane dostrajanie optymalizacji",
+      "description": "Ręczne pokrętła do dostrajania Sparka, gdy automatyczne mechanizmy (takie jak AQE) nie wystarczają lub gdy brakuje statystyk."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Zwraca tylko pasujące wiersze z obu stron",
+      "description": "Najczęstszy typ złączenia. Zwraca wiersze, w których klucz złączenia istnieje w OBU ramkach DataFrame. Wiersze z dowolnej strony, które nie mają dopasowania po drugiej stronie, są całkowicie pomijane. W SQL: klasyczny JOIN lub INNER JOIN.",
+      "when_to_use": "Używaj, gdy interesują Cię wyłącznie rekordy posiadające odpowiednik. Przykład: zamówienia mające przypisanego klienta, transakcje z pasującym produktem. Jeśli rekord nie ma dopasowania, nie chcesz go w wynikach.",
+      "edge_cases": [
+        "Klucze NULL nigdy się nie dopasowują — wiersze z wartością NULL w kluczu złączenia są wykluczane z wyniku, nawet jeśli obie strony mają NULL.",
+        "Zduplikowane klucze po prawej stronie tworzą iloczyn kartezjański dla tych kluczy.",
+        "Inner join po wielu kolumnach: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Wszystkie wiersze z lewej strony, dopasowane wiersze z prawej",
+      "description": "Zwraca WSZYSTKIE wiersze z lewego DataFrame oraz dopasowany wiersz z prawego, jeśli dopasowanie istnieje. Gdy po prawej stronie nie ma dopasowania, kolumny prawej strony są wypełniane wartością NULL. W SQL nazywany również LEFT JOIN.",
+      "when_to_use": "Używaj, gdy lewy DataFrame jest Twoim „źródłem prawdy” (source of truth) i chcesz wzbogacić go o opcjonalne dane z prawej strony. Przykład: pobierz wszystkich klientów i ich ostatnie zamówienie (jeśli je złożyli). Klienci bez zamówień nadal się pojawią.",
+      "edge_cases": [
+        "Aby znaleźć rekordy BEZ dopasowania po prawej stronie: przefiltruj wiersze, w których kolumna prawej strony ma wartość NULL po złączeniu.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — znajduje niedopasowane wiersze z lewej strony.",
+        "Jeśli prawa strona zawiera zduplikowane klucze, pasujące wiersze z lewej strony zostaną powielone."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Wszystkie wiersze z prawej strony, dopasowane wiersze z lewej",
+      "description": "Lustrzane odbicie Left Outer Join. Zwraca WSZYSTKIE wiersze z prawego DataFrame, wstawiając NULL dla niedopasowanych kolumn z lewej strony. Rzadziej używany niż LEFT — zazwyczaj można zamienić ramki DataFrame miejscami i użyć LEFT, co jest bardziej intuicyjne.",
+      "when_to_use": "Używaj, gdy prawy DataFrame jest nadrzędnym źródłem danych. W praktyce zamiana kolejności DataFrame i użycie left join jest zazwyczaj czytelniejsza i łatwiejsza w analizie.",
+      "edge_cases": [
+        "Odpowiednik: users.join(orders, 'user_id', 'left') — right join rzadko bywa naprawdę konieczny.",
+        "Wypełnienie wartościami NULL następuje w kolumnach LEWEJ strony dla niedopasowanych wierszy z prawej."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Wszystkie wiersze z obu stron, wartości NULL w przypadku braku dopasowania",
+      "description": "Zwraca WSZYSTKIE wiersze z OBU ramek DataFrame. Pasujące do siebie wiersze są łączone. Wiersze bez dopasowania po drugiej stronie otrzymują wartości NULL w brakujących kolumnach. W SQL nazywany także FULL JOIN lub FULL OUTER JOIN.",
+      "when_to_use": "Używaj do uzgadniania danych (data reconciliation): porównywania dwóch źródeł w celu sprawdzenia, co znajduje się w jednym, a czego brakuje w drugim, lub co jest w obu. Popularny w potokach ETL do wykrywania zmian (SCD Type 2).",
+      "edge_cases": [
+        "Full outer join jest kosztowny — nie może korzystać ze strategii Broadcast Join i zawsze skutkuje pełnym shuffle.",
+        "Aby znaleźć wiersze obecne TYLKO w A: result.filter(result['name_b'].isNull())",
+        "Aby znaleźć wiersze obecne TYLKO w B: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Iloczyn kartezjański)",
+      "subtitle": "Każdy wiersz z lewej strony połączony z każdym wierszem z prawej",
+      "description": "Zwraca iloczyn kartezjański: każdy wiersz lewego DataFrame zostaje sparowany z KAŻDYM wierszem prawego DataFrame. Jeśli lewy ma M wierszy, a prawy N wierszy, wynik ma M×N wierszy. Klucz złączenia nie jest potrzebny. Ekstremalnie kosztowny — używaj z najwyższą ostrożnością.",
+      "when_to_use": "Używaj do wygenerowania wszystkich kombinacji dwóch małych ramek DataFrame. Typowe zastosowania: generowanie wszystkich kombinacji data-produkt dla szkieletu raportu lub porównywanie każdego rekordu z każdym innym. Stosuj WYŁĄCZNIE na małych zbiorach danych.",
+      "edge_cases": [
+        "Jeśli lewy = 1 mln wierszy i prawy = 1 mln wierszy → wynik = 1 BILION wierszy. Zawsze najpierw sprawdzaj rozmiary.",
+        "Jako zabezpieczenie Spark wymaga ustawienia spark.sql.crossJoin.enabled=true dla niejawnych złączeń cross join.",
+        "Wydajność: wykorzystuje fizyczny operator BroadcastNestedLoopJoin lub CartesianProduct — brak tablicy mieszającej (hash table)."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Zwraca wiersze z lewej strony mające dopasowanie po prawej — bez kolumn z prawej",
+      "description": "Zwraca wiersze z LEWEGO DataFrame, dla których istnieje dopasowanie w prawym, ALE nie dołącza żadnych kolumn z prawej strony. Działa jak INNER JOIN, z tą różnicą, że otrzymujesz wyłącznie kolumny z lewej strony. Przydatny jako filtr oparty na innym zbiorze danych.",
+      "when_to_use": "Używaj jako filtra istnienia: „Podaj mi wszystkich klientów, którzy złożyli co najmniej jedno zamówienie” — bez powielania wierszy klientów mających wiele zamówień. Bardziej wydajny niż inner join, gdy nie potrzebujesz kolumn z prawej strony.",
+      "edge_cases": [
+        "Schemat wynikowy zawiera wyłącznie kolumny LEWEGO DataFrame — żadne kolumny z prawej strony się nie pojawiają.",
+        "Wielokrotne dopasowania po prawej stronie NIE duplikują wierszy z lewej strony (w przeciwieństwie do inner join).",
+        "Odpowiednik w SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Zwraca wiersze z lewej strony, które NIE mają dopasowania po prawej",
+      "description": "Przeciwieństwo Left Semi Join. Zwraca wiersze z LEWEGO DataFrame, dla których NIE istnieje żadne dopasowanie po prawej stronie. Idealny do wyszukiwania brakujących lub osieroconych rekordów (orphaned records). Kolumny pochodzą wyłącznie z lewego DataFrame.",
+      "when_to_use": "Używaj do znajdowania rekordów, które NIE istnieją w innej tabeli. Przykład: klienci, którzy nigdy nie złożyli zamówienia, produkty bez sprzedaży, użytkownicy, którzy nie zalogowali się w tym miesiącu. Przydatny również do walidacji kompletności danych.",
+      "edge_cases": [
+        "Wiersze z kluczami złączenia NULL: ponieważ NULL != NULL, klucze NULL po lewej stronie zawsze pojawią się w wynikach anti join.",
+        "Odpowiednik w SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Bardziej wydajna alternatywa dla: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Złączenie ramki DataFrame z samą sobą",
+      "description": "Self join polega na złączeniu DataFrame z jego własną kopią. Służy do obsługi relacji hierarchicznych lub porównywania wierszy w obrębie tego samego zbioru danych. Wymaga nadania aliasów w celu odróżnienia obu stron.",
+      "when_to_use": "Używaj do: znajdowania relacji przełożony-pracownik w tej samej tabeli, porównywania każdego wiersza z innymi wierszami (np. szukania zduplikowanych transakcji) lub przechodzenia struktur drzewiastych/grafowych zapisanych w jednej tabeli.",
+      "edge_cases": [
+        "Zawsze nadawaj aliasy obu stronom self joina — bez aliasów Spark nie potrafi rozstrzygnąć niejednoznaczności kolumn.",
+        "Dla głębokich hierarchii (powyżej 2 poziomów) użyj GraphX lub iteracyjnych złączeń z .checkpoint(), aby uniknąć eksplozji lineage.",
+        "Self join typu inner tworzy N² kombinacji — filtruj ostrożnie."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Ranking: row_number vs rank vs dense_rank",
+      "subtitle": "Obsługa duplikatów i protokoły numerowania",
+      "description": "Funkcje te przypisują kolejny numer każdemu wierszowi w obrębie partycji okna (window partition). Główna różnica polega na sposobie traktowania remisów (wierszy o takich samych wartościach w klauzuli ORDER BY).",
+      "when_to_use": "Używaj row_number dla unikalnych identyfikatorów, rank dla remisów w stylu sportowym (z pomijaniem kolejnych numerów) oraz dense_rank dla ciągłej numeracji miejsc (bez luk).",
+      "edge_cases": [
+        "Jeśli nie podano orderBy, wynik row_number może być niedeterministyczny.",
+        "Partycjonowanie po kolumnach o wysokiej kardynalności może powodować przeciążenie pamięci."
+      ]
+    },
+    "offset_functions": {
+      "title": "Offset: lag vs lead",
+      "subtitle": "Dostęp do poprzednich lub następnych rekordów",
+      "description": "Funkcje Lag i Lead pozwalają uzyskać dostęp do danych z innych wierszy (poprzedzających lub następujących) bez wykonywania self-joinów. Lag sięga N wierszy wstecz, a Lead N wierszy w przód.",
+      "when_to_use": "Idealne do analizy szeregów czasowych: obliczania wzrostu miesiąc do miesiąca, wykrywania zmian statusu lub wyznaczania różnicy czasu między zdarzeniami.",
+      "edge_cases": [
+        "Wartości domyślne (default values) są ważne, aby uniknąć wartości NULL w pierwszym/ostatnim wierszu.",
+        "Sortowanie musi być jednoznaczne, aby zapewnić stabilne wyniki lag/lead."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "Domyślna i najszybsza metoda agregacji",
+      "description": "Spark buduje w pamięci mapę mieszającą (hash map), w której kluczami są kolumny grupujące, a wartościami bieżące agregaty. Działa w dwóch fazach: agregacji częściowej (na egzekutorach) i agregacji końcowej (po operacji shuffle).",
+      "when_to_use": "Domyślny wybór dla większości operacji groupBy. Jest niezwykle szybki, dopóki unikalne grupy dla danej partycji mieszczą się na stercie pamięci egzekutora.",
+      "edge_cases": [
+        "Przeciążenie pamięci: przy zbyt dużej liczbie unikalnych kluczy Spark może zrzucać dane na dysk (spill to disk) lub przełączyć się awaryjnie na SortAggregate.",
+        "Grupy o wysokiej kardynalności: mogą prowadzić do skośnych operacji shuffle (skewed shuffles)."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "Odporna na zrzuty na dysk (spill-safe) metoda awaryjna dla ogromnych grup",
+      "description": "Wymaga posortowania danych według kluczy grupujących. Następnie Spark iteruje po posortowanych danych, akumulując wartości dla danego klucza aż do napotkania nowego klucza.",
+      "when_to_use": "Stosowany, gdy klucze grupujące są zbyt duże dla mapy mieszającej lub gdy dane są już posortowane. Jest wolniejszy niż HashAggregate, ale bardziej odporny pamięciowo, ponieważ nie wymaga mapy hashującej o dostępie swobodnym.",
+      "edge_cases": [
+        "Dodatkowy narzut związany z sortowaniem, jeśli dane nie są wcześniej posortowane.",
+        "Spill-safe: nie ulega awarii OOM (Out Of Memory) tak łatwo jak HashAggregate."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Formaty kolumnowe vs wierszowe",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "Formaty kolumnowe przechowują dane kolumna po kolumnie zamiast wiersz po wierszu. Jest to niezwykle wydajne w zapytaniach analitycznych (OLAP), ponieważ Spark może pominąć całe kolumny, które nie występują w klauzuli SELECT.",
+      "when_to_use": "Zawsze używaj formatu Parquet lub Delta dla dużych obciążeń analitycznych. Unikaj CSV/JSON wszędzie poza surowymi strefami zrzutu danych (landing zones).",
+      "edge_cases": [
+        "Ewolucja schematu (schema evolution) jest znacznie lepiej obsługiwana przez Delta Lake.",
+        "Formaty wierszowe (Avro) sprawdzają się lepiej przy zapisach o wysokiej przepustowości i w streamingu."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Filtrowanie danych na poziomie warstwy pamięci masowej",
+      "description": "Spark spycha operacje FILTER (klauzula WHERE) oraz SELECT w dół do warstwy pamięci masowej. Czytnik (Parquet/Delta) zwraca tylko te wiersze i kolumny, które spełniają warunki filtra, drastycznie redukując operacje I/O.",
+      "when_to_use": "Kluczowe dla wydajności. Spark wykonuje to automatycznie, jeśli format danych to obsługuje. Pamiętaj, aby partycjonować dane po kolumnach, po których często filtrujesz.",
+      "edge_cases": [
+        "Pushdown nie działa w przypadku funkcji UDF ani złożonych wyrażeń.",
+        "Filtr musi zazwyczaj dotyczyć kolumny najwyższego poziomu."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "Zarządzanie pamięcią i historią pochodzenia (lineage)",
+      "description": "cache() to skrót dla persist(MEMORY_AND_DISK). Instruuje Sparka, aby zapisał DataFrame w pamięci RAM (oraz na dysku, jeśli się nie zmieści) po jego pierwszym obliczeniu.",
+      "when_to_use": "Używaj, gdy ten sam DataFrame jest wykorzystywany w wielu kolejnych akcjach (actions). Przykład: obliczenie podsumowania, a następnie zapisanie surowych danych."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "Ucinanie lineage dla bezpieczeństwa",
+      "description": "W przeciwieństwie do cache, checkpoint() zapisuje dane w niezawodnej pamięci masowej (HDFS/S3) i UCINA historię pochodzenia (lineage). Zapobiega to nadmiernemu wydłużaniu łańcuchów lineage i błędom StackOverflowError.",
+      "when_to_use": "Stosuj w algorytmach iteracyjnych (Machine Learning) lub gdy lineage jest ekstremalnie złożony. Jest wolniejszy niż cache, ale bardziej niezawodny."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Mózg współczesnego Sparka (3.x+)",
+      "description": "AQE ponownie optymalizuje plan zapytania POMIĘDZY jego etapami (query stages). Wykorzystuje statystyki wykonania z ukończonych etapów, aby ulepszyć plan dla etapów pozostałych.",
+      "when_to_use": "Domyślnie włączone od wersji Spark 3.2+. Zawsze zostawiaj je włączone. Rozwiązuje trzy główne problemy: łączenie partycji (coalescing), zmianę strategii join oraz optymalizację skośnych złączeń (skew joins)."
+    },
+    "skew_join_optimization": {
+      "title": "Optymalizacja Skew Join",
+      "subtitle": "Obsługa nierównomiernego rozkładu danych",
+      "description": "Data skew występuje wtedy, gdy jedna partycja zawiera znacznie więcej danych niż pozostałe, przez co jedno zadanie trwa 10x dłużej. AQE wykrywa to i dzieli skośną partycję na mniejsze podpartycje.",
+      "when_to_use": "Gdy w interfejsie Spark UI widzisz opóźnione zadania („straggler tasks”). AQE radzi sobie z tym automatycznie, wyszukując partycje znacznie większe od średniej."
+    },
+    "cluster_managers": {
+      "title": "Menedżery klastrów (YARN vs K8s)",
+      "subtitle": "Strategie orkiestracji zasobów",
+      "description": "Spark może działać na różnych menedżerach klastrów. YARN to tradycyjny menedżer ze świata Hadoop, natomiast Kubernetes (K8s) to nowoczesne podejście cloud-native.",
+      "when_to_use": "Używaj YARN dla starszych klastrów Hadoop typu on-premise. Wybierz K8s dla środowisk chmurowych i skonteneryzowanych, wymagających lepszej izolacji oraz autoskalowania."
+    },
+    "deployment_modes": {
+      "title": "Tryb Client vs Cluster Mode",
+      "subtitle": "Gdzie działa Driver?",
+      "description": "W trybie Client Mode sterownik (driver) działa na maszynie, z której wysyłasz zadanie. W trybie Cluster Mode driver działa wewnątrz klastra (na jednym z węzłów roboczych).",
+      "when_to_use": "Używaj Client Mode do interaktywnego debugowania i pracy z notatnikami (notebooks). Używaj Cluster Mode dla zadań produkcyjnych, aby uniknąć opóźnień sieciowych i awarii drivera w razie rozłączenia Twojej lokalnej maszyny."
+    },
+    "memory_regions": {
+      "title": "Pamięć Execution vs Storage Memory",
+      "subtitle": "Dynamiczna granica",
+      "description": "Execution Memory służy do operacji shuffle i join. Storage Memory służy do buforowania (caching). Współdzielą tę samą pulę pamięci; jeśli jedna część jest wolna, druga może ją pożyczyć.",
+      "when_to_use": "Dostosuj parametry spark.memory.fraction (domyślnie 0.6) oraz spark.memory.storageFraction (domyślnie 0.5), jeśli intensywnie korzystasz z pamięci podręcznej lub wykonujesz ogromne operacje shuffle."
+    },
+    "watermarking_logic": {
+      "title": "Watermarking i spóźnione dane (Late Data)",
+      "subtitle": "Ograniczanie zużycia pamięci w strumieniach stanowych",
+      "description": "Watermark to kroczący próg czasowy. Jeśli maksymalny dotychczas zaobserwowany czas zdarzenia (event time) wynosi T, a watermark to W, wszelkie dane docierające z czasem zdarzenia starszym niż (T - W) są odrzucane. Pozwala to Sparkowi usuwać stary stan z pamięci.",
+      "when_to_use": "Obowiązkowy zawsze, gdy używasz agregacji lub złączeń po czasie zdarzenia w Structured Streaming. Bez niego stan rośnie w nieskończoność, prowadząc do błędu OOM."
+    },
+    "output_modes": {
+      "title": "Tryby wyjściowe strumieniowania (Streaming Output Modes)",
+      "subtitle": "Jak Spark zapisuje wyniki strumienia",
+      "description": "1. Append: Zapisuje wyłącznie NOWE wiersze, które już nigdy się nie zmienią (wymaga Watermarku przy agregacjach).\n2. Update: Zapisuje tylko te wiersze, które zostały zaktualizowane w ostatnim wyzwalaczu (trigger).\n3. Complete: Zapisuje CAŁĄ tabelę wynikową przy każdym wyzwalaczu.",
+      "when_to_use": "Append do zapisywania w logach/plikach. Update do zapisu do bazy danych. Complete dla malutkich tabel referencyjnych lub całkowitych podsumowań."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "Centralizacja tabel i metadanych",
+      "description": "Katalog (Catalog) lub Metastore pełni rolę centralnego spisu wszystkich Twoich zbiorów danych. Mapuje nazwy tabel (np. „sales.customers”) na fizyczne pliki (np. „s3://bucket/path/parquet/”). Hive Metastore (HMS) to starszy standard open-source. Unity Catalog to nowoczesny standard korporacyjny dla architektur Lakehouse.",
+      "when_to_use": "Na produkcji zawsze używaj katalogu. Nigdy nie polegaj w kodzie wyłącznie na ścieżkach do plików. Oddziela to fizyczną pamięć masową od logicznej tabeli, umożliwiając bezproblemowe migracje."
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "Bezpieczeństwo na poziomie wierszy i kolumn",
+      "description": "Zabezpieczenia na poziomie pamięci masowej (role IAM) chronią jedynie katalogi (poziom bucketu). Nowoczesne katalogi, takie jak Unity Catalog czy AWS Lake Formation, pozwalają pisać instrukcje SQL GRANT ograniczające dostęp do konkretnych wierszy (np. tylko użytkownicy z „PL” widzą wiersze PL) lub kolumn (maskowanie numerów PESEL/SSN).",
+      "when_to_use": "Wymagane przy przetwarzaniu danych osobowych (PII), zapewnianiu zgodności z RODO (GDPR) oraz na wielodostępnych platformach danych (multi-tenant)."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Funkcje wyższego rzędu (Higher-Order Functions)",
+      "subtitle": "Zarządzanie kolumnami tablicowymi (Array)",
+      "description": "Tablice można rozpakować do wielu wierszy za pomocą funkcji explode(), co zwielokrotnia rozmiar zbioru danych. Alternatywnie funkcje wyższego rzędu (takie jak transform, filter) pozwalają na operacje map/reduce bezpośrednio wewnątrz tablicy bez dodawania wierszy.",
+      "when_to_use": "Użyj explode(), jeśli musisz grupować lub łączyć (join) po poszczególnych elementach tablicy. Użyj transform(), jeśli chcesz jedynie zmodyfikować tablicę (np. pomnożyć wszystkie podatki przez 1.2), zachowując pierwotną liczbę wierszy."
+    },
+    "json_parsing": {
+      "title": "Parsowanie JSON: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "Pracując z kolumną tekstową JSON, możesz albo wyodrębnić pojedynczą ścieżkę jako ciąg znaków (get_json_object), albo rzutować cały ciąg JSON na natywny typ Spark StructType przy użyciu schematu (from_json).",
+      "when_to_use": "Gdy tylko to możliwe, używaj from_json() ze zdefiniowanym schematem. Parsuje on kod JSON jednokrotnie i zapisuje go w typowanych kolumnach, co działa znacznie szybciej niż wielokrotne wywoływanie get_json_object() na tym samym wierszu."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Radzenie sobie z maruderami (Stragglers)",
+      "description": "Jeśli węzeł w Twoim klastrze ma problemy (uszkodzony dysk, problem z siecią), pojedyncze zadanie może trwać 10x dłużej niż reszta (tzw. straggler). Speculative execution zauważa to i uruchamia duplikat zadania na zdrowym węźle. Wygrywa to zadanie, które zakończy się jako pierwsze.",
+      "when_to_use": "Włącz tę funkcję (spark.speculation=true) w zawodnych środowiskach chmurowych lub niejednorodnych klastrach. Zachowaj ostrożność, jeśli zadania zapisują dane do zewnętrznej bazy danych (wymagana jest idempotentność!)."
+    },
+    "broadcast_hints": {
+      "title": "Wskazówki złączeń (Join Hints)",
+      "subtitle": "Nadpisywanie optymalizatora Catalyst",
+      "description": "Czasami Spark nie dysponuje dokładnymi statystykami (np. podczas odczytu z nieuporządkowanego jeziora danych) i nie orientuje się, że tabela jest wystarczająco mała, by użyć broadcastu. Wskazówka Broadcast Hint wymusza na Sparku zastosowanie BroadcastHashJoin.",
+      "when_to_use": "Gdy zidentyfikujesz powolny SortMergeJoin w interfejsie UI i WIESZ, że jedna ze stron bez problemu mieści się w pamięci egzekutora (zazwyczaj < 1 GB, choć domyślny próg wynosi 10 MB)."
+    },
+    "max_partition_bytes": {
+      "title": "Pliki i maxPartitionBytes",
+      "subtitle": "Dostrajanie partycji odczytu",
+      "description": "Podczas odczytu setek maleńkich plików CSV/JSON Spark mapuje 1 plik na 1 partycję, co generuje duży narzut (overhead). Możesz użyć parametru spark.sql.files.maxPartitionBytes (domyślnie 128 MB), aby spakować wiele małych plików do jednej partycji już na etapie ODCZYTU.",
+      "when_to_use": "Jeśli etap odczytu obejmuje tysiące zadań trwających po 10 ms każde, cierpisz na syndrom małych plików (tiny-file syndrome). Zwiększ maxPartitionBytes lub zastosuj pakowanie plików."
+    }
+  }
+}

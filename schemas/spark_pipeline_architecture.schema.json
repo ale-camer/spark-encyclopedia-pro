@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spark-learning.local/schemas/spark_pipeline_architecture.schema.json",
+  "title": "Spark Pipeline Architecture Decision Graph",
+  "description": "Schema for the Apache Spark 3.5 decision graph (nodes and cross-phase transversal links).",
+  "type": "object",
+  "required": ["nodos", "enlaces_transversales"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "nodos": {
+      "type": "object",
+      "description": "Map of node ID (snake_case) to SparkNode definition.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/SparkNode"
+      }
+    },
+    "enlaces_transversales": {
+      "type": "array",
+      "description": "Cross-phase trade-offs, constraints, and causal links between nodes.",
+      "items": {
+        "$ref": "#/definitions/TransversalLink"
+      }
+    }
+  },
+  "definitions": {
+    "SparkNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "nombre",
+        "tipo",
+        "nivel",
+        "pregunta_guia",
+        "subdecisiones",
+        "dependencias_previas"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Unique identifier matching the parent key in `nodos`."
+        },
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display title of the architectural node."
+        },
+        "tipo": {
+          "type": "string",
+          "enum": ["phase", "decision", "problem", "concept", "optimization"],
+          "description": "Semantic category of the node."
+        },
+        "nivel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Hierarchy depth level (1 = Root Phase, 4 = Physical leaf decision)."
+        },
+        "pregunta_guia": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Guiding architectural question or summary for this node."
+        },
+        "subdecisiones": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "description": "Child node IDs in the decision hierarchy."
+        },
+        "dependencias_previas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "description": "Prerequisite node IDs that must be evaluated before this node."
+        },
+        "codigo_pyspark": {
+          "type": "string",
+          "description": "Optional PySpark 3.5 code snippet illustrating this decision."
+        },
+        "salida_consola": {
+          "type": "string",
+          "description": "Optional console or physical plan (`df.explain()`) output."
+        },
+        "diagrama_mermaid": {
+          "type": "string",
+          "description": "Optional Mermaid.js diagram definition."
+        },
+        "reference_section_id": {
+          "type": "string",
+          "description": "Optional ID of a section in `spark_reference.json` for deep-dive reading."
+        }
+      }
+    },
+    "TransversalLink": {
+      "type": "object",
+      "required": ["id", "origen", "destino", "tipo", "descripcion"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^e[0-9]+$",
+          "description": "Unique identifier for the transversal edge (e.g. e01)."
+        },
+        "origen": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Source node ID."
+        },
+        "destino": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Target node ID."
+        },
+        "tipo": {
+          "type": "string",
+          "enum": [
+            "causa_efecto",
+            "restriccion",
+            "mitigacion",
+            "habilitador",
+            "determinante",
+            "disparador",
+            "riesgo_ejecucion"
+          ],
+          "description": "Normalized semantic relationship type."
+        },
+        "descripcion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explanation of the architectural trade-off or impact between source and target."
+        }
+      }
+    }
+  }
+}

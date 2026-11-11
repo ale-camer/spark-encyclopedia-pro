@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Join-typer",
+      "description": "Alla join-strategier som finns tillgängliga i PySpark. Att förstå varje typs beteende, logik för radurval och fysisk exekvering är avgörande för korrekta och högpresterande pipelines."
+    },
+    "window_functions": {
+      "title": "Window-funktioner",
+      "description": "Avancerade analytiska operationer som beräknar värden över en uppsättning rader relaterade till den aktuella raden. Inkluderar ranking, förskjutningar (offsets) och rullande aggregeringar."
+    },
+    "aggregations": {
+      "title": "Aggregeringar",
+      "description": "Hur Spark beräknar sammanfattande statistik över grupper. Att förstå Hash vs Sort Aggregate och hur gruppering påverkar shuffle är nyckeln vid storskalig data."
+    },
+    "storage_and_pushdown": {
+      "title": "Lagring & Pushdown",
+      "description": "Hur datalayout på disk påverkar Sparks prestanda. Optimerade format (Parquet/Delta) gör att Spark bara läser den data som faktiskt behövs."
+    },
+    "persistence_and_caching": {
+      "title": "Persistering & Cachning",
+      "description": "Hur man återanvänder mellanliggande DataFrames utan att beräkna om hela lineage-kedjan. Avgörande för iterativa algoritmer och flera actions."
+    },
+    "aqe_optimizations": {
+      "title": "Kärnoptimering & AQE",
+      "description": "Hur Spark anpassar sin exekveringsplan under körning baserat på faktisk datastatistik. Adaptive Query Execution (AQE) är det största prestandalyftet i modern Spark."
+    },
+    "infrastructure": {
+      "title": "Infrastruktur & Driftsättning",
+      "description": "Hur Spark ansluter till klusterhanterare (Cluster Managers) och hanterar applikationens livscykel. Detta är grunden för varje Spark-jobb."
+    },
+    "memory_management": {
+      "title": "Unified Memory Management",
+      "description": "Hur Spark delar upp executorns RAM-minne mellan beräkning (Execution) och cache (Storage). Spark 3.x använder en enhetlig modell."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Avancerade koncept för att bearbeta dataströmmar tillförlitligt, hantera tillstånd (state) och ta hand om sent ankommande poster i fel ordning."
+    },
+    "data_governance": {
+      "title": "Data Governance & Säkerhet",
+      "description": "Hur Spark integreras med kataloger (Catalogs) för att erbjuda data discovery, schemakontroll och finkornig åtkomstkontroll."
+    },
+    "complex_types": {
+      "title": "Komplexa Datatyper",
+      "description": "Arbeta med icke-skalära data som Arrays, Structs, Maps och råa JSON-strängar. Oumbärligt för moderna API- och NoSQL-datakällor."
+    },
+    "execution_internals": {
+      "title": "Exekverings- & Shuffle-interna",
+      "description": "Under huven på Sparks exekveringsmotor. Förståelse för Tungsten, minneshantering och task speculation."
+    },
+    "optimizations_extra": {
+      "title": "Avancerad Optimerings-tuning",
+      "description": "Manuella reglage för att finjustera Spark när automatiska mekanismer (som AQE) inte räcker till eller när statistik saknas."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Returnerar endast matchande rader från båda sidor",
+      "description": "Den vanligaste join-typen. Returnerar rader där join-nyckeln finns i BÅDA DataFrames. Rader från endera sidan som saknar matchning i den andra exkluderas helt. I SQL: den klassiska JOIN eller INNER JOIN.",
+      "when_to_use": "Använd när du bara bryr dig om poster som har en motsvarande matchning. Exempel: beställningar som har en matchande kund, transaktioner med en matchande produkt. Om en post saknar matchning vill du inte ha med den.",
+      "edge_cases": [
+        "NULL-nycklar matchar aldrig — rader med NULL i join-nyckeln exkluderas från resultatet även om båda sidor har NULL.",
+        "Dubblettnycklar på höger sida skapar en kartesisk produkt för dessa nycklar.",
+        "Inner join på flera kolumner: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Alla rader från vänster, matchande rader från höger",
+      "description": "Returnerar ALLA rader från den vänstra DataFramen, plus den matchande raden från höger när en matchning finns. När det inte finns någon matchning till höger fylls kolumnerna från höger sida med NULL. Kallas även LEFT JOIN i SQL.",
+      "when_to_use": "Använd när den vänstra DataFramen är din 'source of truth' och du vill berika den med valfri data från höger. Exempel: hämta alla kunder och deras senaste beställning (om de har någon). Kunder utan beställningar visas ändå.",
+      "edge_cases": [
+        "För att hitta poster UTAN matchning på höger sida: filtrera där en kolumn från höger sida är NULL efter join-operationen.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — hittar omatchade vänstra rader.",
+        "Om höger sida har dubblettnycklar kommer vänstra rader som matchar att dupliceras."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Alla rader från höger, matchande rader från vänster",
+      "description": "Spegelbilden av Left Outer Join. Returnerar ALLA rader från den högra DataFramen, med NULL för omatchade vänstra kolumner. Mindre vanlig än LEFT — oftast kan du byta plats på DataFrames och använda LEFT istället, vilket är mer intuitivt.",
+      "when_to_use": "Använd när den högra DataFramen är den auktoritativa källan. I praktiken är det oftast renare och lättare att resonera kring om man byter plats på DataFrames och använder left join.",
+      "edge_cases": [
+        "Motsvarar: users.join(orders, 'user_id', 'left') — right join är sällan nödvändig.",
+        "Utfyllnad med NULL sker i kolumnerna på VÄNSTER sida för omatchade högra rader."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Alla rader från båda sidor, NULL där matchning saknas",
+      "description": "Returnerar ALLA rader från BÅDA DataFrames. Rader som har en matchning kombineras. Rader utan matchning på andra sidan får NULL ifyllt för de saknade kolumnerna. Kallas även FULL JOIN eller FULL OUTER JOIN i SQL.",
+      "when_to_use": "Använd för dataavstämning (reconciliation): jämför två källor för att hitta vad som finns i den ena men inte i den andra, eller vad som finns i båda. Vanligt i ETL-pipelines för ändringsdetektering (SCD Type 2).",
+      "edge_cases": [
+        "Full outer join är dyr — den kan inte använda Broadcast Join-strategin och resulterar alltid i en fullständig shuffle.",
+        "För att hitta rader ENDAST i A: result.filter(result['name_b'].isNull())",
+        "För att hitta rader ENDAST i B: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Kartesisk Produkt)",
+      "subtitle": "Varje rad i vänster parad med varje rad i höger",
+      "description": "Returnerar den kartesiska produkten: varje rad i den vänstra DataFramen paras ihop med VARJE rad i den högra DataFramen. Om vänster har M rader och höger har N rader, får resultatet M×N rader. Ingen join-nyckel behövs. Extremt resurskrävande — använd med försiktighet.",
+      "when_to_use": "Använd för att generera alla kombinationer av två små DataFrames. Vanligt för: att generera alla datum-produkt-kombinationer för en rapportmall, eller jämföra varje post mot alla andra. Använd ENDAST på små dataset.",
+      "edge_cases": [
+        "Om vänster=1M rader och höger=1M rader → resultat = 1 BILJON rader. Kontrollera alltid storlekarna först.",
+        "Spark kräver spark.sql.crossJoin.enabled=true för implicita cross joins som en säkerhetsspärr.",
+        "Prestanda: använder den fysiska operatorn BroadcastNestedLoopJoin eller CartesianProduct — ingen hashtabell."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Returnerar vänstra rader som har en matchning till höger — högra kolumner exkluderas",
+      "description": "Returnerar rader från den VÄNSTRA DataFramen där en matchning finns i den högra, MEN inkluderar inga kolumner från höger sida. Det är som en INNER JOIN men du får bara kolumnerna från vänster sida. Användbart som ett filter baserat på ett annat dataset.",
+      "when_to_use": "Använd som ett existensfilter: 'Ge mig alla kunder som har lagt minst en beställning' — utan att duplicera kundrader för kunder med flera beställningar. Mer effektivt än inner join när du inte behöver kolumnerna från höger sida.",
+      "edge_cases": [
+        "Resultatschemat innehåller endast kolumner från VÄNSTER DataFrame — inga högra kolumner visas.",
+        "Flera matchningar på höger sida duplicerar INTE vänstra rader (till skillnad från inner join).",
+        "Motsvarande SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Returnerar vänstra rader som SAKNAR matchning till höger",
+      "description": "Motsatsen till Left Semi Join. Returnerar rader från den VÄNSTRA DataFramen där INGEN matchning finns på höger sida. Perfekt för att hitta saknade eller föräldralösa poster (orphaned records). Kolumnerna kommer enbart från den vänstra DataFramen.",
+      "when_to_use": "Använd för att hitta poster som INTE finns i en annan tabell. Exempel: kunder som aldrig lagt en beställning, produkter utan försäljning, användare som inte loggat in den här månaden. Även användbart för att validera datakompletthet.",
+      "edge_cases": [
+        "Rader med NULL i join-nyckeln: NULL != NULL, så NULL-nycklar på vänster sida kommer alltid att visas i resultatet från en anti join.",
+        "Motsvarande SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Mer effektivt alternativ till: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Slå samman en DataFrame med sig själv",
+      "description": "En self join är när du slår samman (joinar) en DataFrame med en kopia av sig själv. Används för hierarkiska relationer eller för att jämföra rader inom samma dataset. Kräver alias för att skilja de två sidorna åt.",
+      "when_to_use": "Använd för: att hitta chef-anställd-relationer i samma tabell, jämföra varje rad med andra rader (t.ex. hitta dubblettransaktioner) eller traversera träd-/grafstrukturer som lagras i en tabell.",
+      "edge_cases": [
+        "Sätt alltid alias på båda sidor av en self join — utan alias kan Spark inte lösa kolumntvetydigheter.",
+        "För djupa hierarkier (fler än 2 nivåer), använd GraphX eller iterativa joins med .checkpoint() för att undvika lineage-explosion.",
+        "Self join med inner skapar N² kombinationer — filtrera noggrant."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Ranking: row_number vs rank vs dense_rank",
+      "subtitle": "Hantering av dubbletter och numreringsprotokoll",
+      "description": "Dessa funktioner tilldelar ett löpnummer till varje rad inom en fönsterpartition (window partition). Den största skillnaden är hur de hanterar oavgjorda lägen (rader med samma värden i ORDER BY-satsen).",
+      "when_to_use": "Använd row_number för unika identifierare, rank för tävlingsliknande delade platser (hoppar över nummer) och dense_rank för sammanhängande placeringar (inga luckor).",
+      "edge_cases": [
+        "Om ingen orderBy anges kan row_number bli icke-deterministisk.",
+        "Partitionering på kolumner med hög kardinalitet kan orsaka minnespress."
+      ]
+    },
+    "offset_functions": {
+      "title": "Offset: lag vs lead",
+      "subtitle": "Åtkomst till föregående eller nästa poster",
+      "description": "Lag och Lead låter dig komma åt data från andra rader (före eller efter) utan att göra self-joins. Lag tittar N rader bakåt, Lead tittar N rader framåt.",
+      "when_to_use": "Perfekt för tidsserieanalys: beräkna tillväxt månad för månad, upptäcka statusändringar eller hitta tidsskillnaden mellan händelser.",
+      "edge_cases": [
+        "Standardvärden (default values) är viktiga för att undvika NULL i första/sista raden.",
+        "Sorteringen måste vara strikt för stabila lag/lead-resultat."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "Den förvalda och snabbaste aggregeringsmetoden",
+      "description": "Spark bygger en hashtabell (hash map) i minnet där nycklarna är grupperingskolumnerna och värdena är de löpande aggregaten. Den arbetar i två faser: partiell aggregering (på executors) och slutlig aggregering (efter shuffle).",
+      "when_to_use": "Standardvalet för de flesta groupBys. Det är extremt snabbt så länge de unika grupperna för en partition får plats i executorns minnes-heap.",
+      "edge_cases": [
+        "Minnespress: Om det finns för många unika nycklar kan Spark spilla till disk eller falla tillbaka på SortAggregate.",
+        "Grupper med hög kardinalitet: Kan leda till snedfördelade (skewed) shuffles."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "Den spill-säkra reservmetoden för enorma grupper",
+      "description": "Kräver att data sorteras efter grupperingsnycklar. Spark itererar sedan genom den sorterade datan och ackumulerar värden för en nyckel tills en ny nyckel dyker upp.",
+      "when_to_use": "Används när grupperingsnycklarna är för stora för en hash map eller när data redan är sorterad. Den är långsammare än HashAggregate men mer minnesrobust eftersom den inte kräver en hash map med direktåtkomst.",
+      "edge_cases": [
+        "Extra overhead för sortering om datan inte redan är sorterad.",
+        "Spill-säker: Kraschar inte av OOM lika lätt som HashAggregate."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Kolumn- vs Radformat",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "Kolumnbaserade format lagrar data per kolumn snarare än per rad. Detta är mycket effektivt för analytiska frågor (OLAP) eftersom Spark kan hoppa över hela kolumner som inte finns med i SELECT-satsen.",
+      "when_to_use": "Använd alltid Parquet eller Delta för storskaliga analytiska arbetslaster. Undvik CSV/JSON för allt annat än råa landningszoner (landing zones).",
+      "edge_cases": [
+        "Schemautveckling (schema evolution) hanteras bättre av Delta Lake.",
+        "Radbaserade format (Avro) är bättre för skrivningar med hög genomströmning och streaming."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Filtrera data redan i lagringslagret",
+      "description": "Spark trycker ner FILTER (WHERE-satsen) och SELECT till lagringslagret. Läsaren (Parquet/Delta) returnerar endast rader och kolumner som matchar filtret, vilket minskar I/O dramatiskt.",
+      "when_to_use": "Avgörande för prestandan. Spark gör detta automatiskt om formatet stöder det. Se till att partitionera dina data efter kolumner du ofta filtrerar på.",
+      "edge_cases": [
+        "Pushdown fungerar inte för UDF:er eller komplexa uttryck.",
+        "Filtret måste vanligtvis ligga på en kolumn på toppnivå."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "Hantera minne och lineage",
+      "description": "cache() är en kortform för persist(MEMORY_AND_DISK). Det säger åt Spark att lagra DataFramen i minnet (och på disk om den inte får plats) efter att den har beräknats för första gången.",
+      "when_to_use": "Använd när samma DataFrame används i flera efterföljande actions. Exempel: beräkna en sammanfattning och sedan spara rådatan."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "Kapa lineage för ökad säkerhet",
+      "description": "Till skillnad från cache sparar checkpoint() data till en pålitlig lagringsplats (HDFS/S3) och KAPAR lineage-kedjan. Detta förhindrar att lineage-kedjor blir för långa och orsakar StackOverflowErrors.",
+      "when_to_use": "Använd i iterativa algoritmer (Machine Learning) eller när lineage är extremt komplex. Det är långsammare än cache men mer tillförlitligt."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Hjärnan i modern Spark (3.x+)",
+      "description": "AQE optimerar om frågeplanen MELLAN frågestegen (query stages). Det använder körningsstatistik från slutförda stages för att förbättra planen för återstående stages.",
+      "when_to_use": "Aktiverat som standard i Spark 3.2+. Ha det alltid påslaget. Det hanterar tre huvudproblem: slå ihop partitioner (coalescing), byta join-strategier och optimera skew joins."
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join-optimering",
+      "subtitle": "Hantera ojämna datafördelningar",
+      "description": "Data skew uppstår när en partition har betydligt mer data än andra, vilket gör att en enskild task tar 10x längre tid. AQE upptäcker detta och delar upp den snedfördelade partitionen i mindre underpartitioner.",
+      "when_to_use": "När du ser \"straggler tasks\" (eftersläntrare) i Spark UI. AQE hanterar detta automatiskt genom att leta efter partitioner som är mycket större än genomsnittet."
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "Strategier för resursorkestrering",
+      "description": "Spark kan köras på olika klusterhanterare. YARN är den traditionella Hadoop-hanteraren, medan Kubernetes (K8s) är det moderna molnbaserade (cloud-native) alternativet.",
+      "when_to_use": "Använd YARN för äldre lokala (on-prem) Hadoop-kluster. Använd K8s för molnbaserade, containeriserade miljöer som kräver bättre isolering och autoskalning."
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode",
+      "subtitle": "Var körs Drivern?",
+      "description": "I Client Mode körs drivern på den maskin du skickar jobbet från. I Cluster Mode körs drivern inuti klustret (på en worker-nod).",
+      "when_to_use": "Använd Client Mode för interaktiv felsökning och notebooks. Använd Cluster Mode för produktionsjobb för att undvika nätverkslatens och att drivern kraschar om din lokala maskin tappar anslutningen."
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Memory",
+      "subtitle": "Den dynamiska gränsen",
+      "description": "Execution Memory används för shuffles/joins. Storage Memory används för cachning. De delar samma minnespool; om den ena är ledig kan den andra låna utrymme.",
+      "when_to_use": "Justera spark.memory.fraction (standard 0.6) och spark.memory.storageFraction (standard 0.5) om du har tung cachning eller massiva shuffles."
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Sen Data",
+      "subtitle": "Begränsa minnesanvändningen i tillståndsfulla strömmar",
+      "description": "Ett watermark är ett släpande tröskelvärde. Om den högsta observerade händelsetiden (event time) är T, och watermark är W, kommer all data som anländer med en händelsetid äldre än (T - W) att förkastas. Detta gör att Spark kan rensa gammalt tillstånd (state) från minnet.",
+      "when_to_use": "Obligatoriskt varje gång du använder aggregeringar eller joins över händelsetid i Structured Streaming. Utan det växer tillståndet oändligt, vilket leder till OOM."
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes",
+      "subtitle": "Hur Spark skriver ut strömresultat",
+      "description": "1. Append: Skriver endast NYA rader som aldrig kommer att ändras (kräver Watermark för aggregeringar).\n2. Update: Skriver endast de rader som uppdaterades i den senaste triggern.\n3. Complete: Skriver HELA resultattabellen vid varje trigger.",
+      "when_to_use": "Append för att spara till loggar. Update för att skriva till en databas. Complete för pyttesmå referenstabeller eller totalräkningar."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "Centralisering av tabeller och metadata",
+      "description": "En Catalog eller Metastore fungerar som den centrala katalogen för alla dina dataset. Den mappar tabellnamn (t.ex. \"sales.customers\") till fysiska filer (t.ex. \"s3://bucket/path/parquet/\"). Hive Metastore (HMS) är den äldre open source-standarden. Unity Catalog är den moderna företagsstandarden för Lakehouses.",
+      "when_to_use": "Använd alltid en Catalog i produktion. Förlita dig aldrig enbart på filsökvägar i koden. Det frikopplar den fysiska lagringen från den logiska tabellen och möjliggör sömlösa migreringar."
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "Säkerhet på rad- och kolumnnivå",
+      "description": "Säkerhet på lagringsnivå (IAM-roller) skyddar endast kataloger (bucket-nivå). Moderna kataloger som Unity Catalog eller AWS Lake Formation låter dig skriva SQL GRANT-satser för att begränsa åtkomsten till specifika rader (t.ex. endast användare i \"SE\" kan se SE-rader) eller kolumner (maskering av personnummer).",
+      "when_to_use": "Krävs för hantering av PII (personuppgifter), GDPR-efterlevnad och dataplattformar med flera klienter (multi-tenant)."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions",
+      "subtitle": "Hantera Array-kolumner",
+      "description": "Arrayer kan packas upp till flera rader med explode(), vilket multiplicerar datasetets storlek. Alternativt tillåter Higher-Order Functions (såsom transform, filter) map/reduce-operationer direkt inuti arrayen utan att lägga till rader.",
+      "when_to_use": "Använd explode() om du behöver gruppera eller joina på de enskilda array-elementen. Använd transform() om du bara behöver modifiera arrayen (t.ex. multiplicera alla skatter med 1,2) och samtidigt behålla det ursprungliga radantalet."
+    },
+    "json_parsing": {
+      "title": "JSON-parsning: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "När du hanterar en JSON-textkolumn kan du antingen extrahera en enskild sökväg som en sträng (get_json_object) eller omvandla hela JSON-strängen till en inbyggd Spark StructType med hjälp av ett schema (from_json).",
+      "when_to_use": "Använd from_json() med ett definierat schema så ofta som möjligt. Den parsar JSON-datan en gång och lagrar den i typade kolumner, vilket är mycket snabbare än att anropa get_json_object() flera gånger på samma rad."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Hantera eftersläntrare (Stragglers)",
+      "description": "Om en nod i ditt kluster har problem (trasig disk, nätverksstörning) kan en enskild task ta 10x längre tid än resten (en straggler). Speculative execution märker detta och startar en duplicerad task på en frisk nod. Den som blir klar först vinner.",
+      "when_to_use": "Slå på det (spark.speculation=true) i opålitliga molnmiljöer eller heterogena kluster. Var försiktig om dina tasks skriver till en extern databas (idempotens krävs!)."
+    },
+    "broadcast_hints": {
+      "title": "Join Hints",
+      "subtitle": "Åsidosätta Catalyst-optimeraren",
+      "description": "Ibland saknar Spark korrekt statistik (t.ex. vid läsning från en ostrukturerad data lake) och inser inte att en tabell är tillräckligt liten för broadcast. En Broadcast Hint tvingar Spark att använda en BroadcastHashJoin.",
+      "when_to_use": "När du identifierar en långsam SortMergeJoin i gränssnittet (UI) och du VET att ena sidan enkelt får plats i executorns minne (vanligtvis < 1GB, även om standardtröskeln är 10MB)."
+    },
+    "max_partition_bytes": {
+      "title": "Filer & maxPartitionBytes",
+      "subtitle": "Finjustera läspartitioner",
+      "description": "När hundratals pyttesmå CSV/JSON-filer läses in mappar Spark 1 fil till 1 partition, vilket skapar overhead. Du kan använda spark.sql.files.maxPartitionBytes (standard 128MB) för att packa ihop flera små filer till en enda partition vid LÄSNING.",
+      "when_to_use": "Om ditt lässteg (read stage) har tusentals tasks som tar 10ms vardera lider du av småfilssyndromet (tiny-file syndrome). Öka maxPartitionBytes eller använd filpackning."
+    }
+  }
+}

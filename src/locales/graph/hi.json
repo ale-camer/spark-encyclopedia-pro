@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "संपूर्ण यात्रा (Full Overview)",
+      "description": "सभी 6 डिज़ाइन चरणों में पूरा 49-नोड आर्किटेक्चर मैप। निर्णयों और क्रॉस-फेज़ ट्रेड-ऑफ्स का निरीक्षण करने के लिए Fit View [ ] का उपयोग करें या किसी भी क्लस्टर में ज़ूम करें।"
+    },
+    "infraestructura_cluster": {
+      "label": "इंफ्रास्ट्रक्चर और मेमोरी (Infrastructure & Memory)",
+      "description": "चरण 0: कोई भी कोड चलाने से पहले Cluster Manager और मेमोरी आवंटन रणनीति तय करें। यह परिचालन सीमाओं को परिभाषित करता है।"
+    },
+    "contexto": {
+      "label": "समस्या का संदर्भ (Problem Context)",
+      "description": "सबसे पहले व्यावसायिक समस्या को समझें। डेटा आने की दर, लेटेंसी SLAs, और प्रोसेसिंग मोड बाद के सभी Spark निर्णयों को प्रभावित करते हैं।"
+    },
+    "datos": {
+      "label": "डेटा की विशेषताएं (Data Characteristics)",
+      "description": "डेटासेट का आकार, वितरण (Data Skew), स्टोरेज फॉर्मेट, और गवर्नेंस (Catalogs और ACLs) भौतिक निष्पादन (physical execution) रणनीतियों को निर्धारित करते हैं।"
+    },
+    "transformaciones": {
+      "label": "ट्रांसफॉर्मेशन के प्रकार (Transformation Types)",
+      "description": "Joins, GroupBys, और जटिल डेटा प्रकार (Arrays, JSON) पाइपलाइन के संरचनात्मक लेआउट और Shuffle लागत को परिभाषित करते हैं।"
+    },
+    "ejecucion": {
+      "label": "निष्पादन निहितार्थ (Execution Implications)",
+      "description": "यह समझने के लिए कि वास्तविक बाधाएं (bottlenecks) कहां हैं, DAG, Shuffle प्रभाव और टास्क प्रदर्शन (Speculative Execution) का विश्लेषण करें।"
+    },
+    "optimization": {
+      "label": "ऑप्टिमाइज़ेशन रणनीतियां (Optimization Strategies)",
+      "description": "अंतिम ट्यूनिंग: पार्टीशन प्रबंधन, Caching, AQE रनटाइम अनुकूलन, और मैनुअल Hints/ट्यूनिंग।"
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark पाइपलाइन डिज़ाइन",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "समस्या का संदर्भ",
+      "pregunta_guia": "इस पाइपलाइन को क्या हल करने की आवश्यकता है और किन परिचालन बाधाओं के तहत?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch बनाम Streaming",
+      "pregunta_guia": "क्या डेटा अलग-अलग बैचों (discrete batches) में आता है या एक निरंतर स्ट्रीम (continuous stream) के रूप में?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch बनाम Continuous Processing",
+      "pregunta_guia": "न्यूनतम स्वीकार्य लेटेंसी क्या है: सेकंड (micro-batch) या मिलीसेकंड (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLAs और लेटेंसी लक्ष्य",
+      "pregunta_guia": "क्या कोई निर्धारित SLAs हैं? अधिकतम स्वीकार्य प्रोसेसिंग लेटेंसी क्या है?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "ट्रेड-ऑफ: Latency बनाम Throughput",
+      "pregunta_guia": "क्या मुझे प्रति-इवेंट प्रतिक्रिया गति (Latency) या प्रोसेस किए गए कुल वॉल्यूम (Throughput) को ऑप्टिमाइज़ करना है?"
+    },
+    "datos": {
+      "nombre": "डेटा की विशेषताएं",
+      "pregunta_guia": "डेटा के कौन से गुण प्रोसेसिंग रणनीति को आकार देते हैं?"
+    },
+    "tamano_datos": {
+      "nombre": "डेटासेट का आकार (Dataset Size)",
+      "pregunta_guia": "डेटा के आकार का स्तर क्या है? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "क्या डेटासेट Broadcast के लिए मेमोरी में फिट बैठता है?",
+      "pregunta_guia": "क्या छोटी टेबल spark.sql.autoBroadcastJoinThreshold (डिफ़ॉल्ट 10MB) के भीतर फिट बैठती है?"
+    },
+    "distribucion_datos": {
+      "nombre": "डेटा वितरण (Data Distribution)",
+      "pregunta_guia": "क्या सभी पार्टीशनों में डेटा संतुलित है या कुछ प्रमुख कुंजियाँ (dominant keys) हैं?"
+    },
+    "data_skew": {
+      "nombre": "Data Skew की पहचान और प्रबंधन",
+      "pregunta_guia": "क्या कुछ पार्टीशन काफी बड़े हैं? क्या अत्यधिक कार्डिनैलिटी वाली कुंजियाँ (keys) मौजूद हैं?"
+    },
+    "formato_datos": {
+      "nombre": "स्टोरेज फॉर्मेट (Storage Format)",
+      "pregunta_guia": "क्या फॉर्मेट कॉलमनर रीड (columnar read), कुशल कम्प्रेशन और Partition Pruning का समर्थन करता है?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "क्या मेमोरी में पढ़ने से पहले फ़िल्टर और कॉलम चयन को स्टोरेज स्तर पर पुश (push down) किया जा सकता है?"
+    },
+    "transformaciones": {
+      "nombre": "ट्रांसफॉर्मेशन के प्रकार",
+      "pregunta_guia": "कौन सी ट्रांसफॉर्मेशन श्रेणी प्रमुख है? क्या यह Shuffle उत्पन्न करती है?"
+    },
+    "diseno_joins": {
+      "nombre": "Join डिज़ाइन",
+      "pregunta_guia": "डेटा के आकार और वितरण को देखते हुए कौन सी भौतिक Join रणनीति Shuffle को न्यूनतम करती है?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash बनाम Shuffle Hash बनाम Sort Merge Join",
+      "pregunta_guia": "यदि टेबल छोटी है तो BHJ। यदि डेटा मेमोरी में फिट बैठता है तो SHJ। यदि डेटा बड़ा और सॉर्ट करने योग्य है तो SMJ (डिफ़ॉल्ट)।"
+    },
+    "agregaciones": {
+      "nombre": "Aggregations और GroupBy",
+      "pregunta_guia": "क्या Shuffle से पहले प्रत्येक पार्टीशन के भीतर एग्रीगेशन को पूरी तरह से प्री-एग्रीगेट किया जा सकता है?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate बनाम Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate तेज़ है लेकिन इसके लिए ग्रुप का मेमोरी में फिट होना आवश्यक है। Sort Aggregate स्पिल-सेफ (spill-safe) है।"
+    },
+    "operaciones_ventana": {
+      "nombre": "Window ऑपरेशंस",
+      "pregunta_guia": "क्या व्यावसायिक लॉजिक को सॉर्ट किए गए डेटा पार्टीशनों पर गणना (ranking, lag, rolling avg) की आवश्यकता है?"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy रणनीति",
+      "pregunta_guia": "क्या विंडो पार्टीशन कुंजी संतुलित वितरण उत्पन्न करती है या Data Skew को बढ़ाती है?"
+    },
+    "ejecucion": {
+      "nombre": "निष्पादन निहितार्थ (Execution Implications)",
+      "pregunta_guia": "DAG Stages में ट्रांसफॉर्मेशन कैसे साकार होते हैं? वे कौन सी बाधाएं (bottlenecks) उत्पन्न करते हैं?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle जनरेशन",
+      "pregunta_guia": "पाइपलाइन कितनी Stage सीमाएं (stage boundaries) पेश करती है? नेटवर्क के माध्यम से कितना डेटा मूव होता है?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "spark.sql.shuffle.partitions की ट्यूनिंग",
+      "pregunta_guia": "क्या पार्टीशनों की संख्या ~100-200MB ब्लॉक देती है? क्या यह बहुत अधिक (ओवरहेड) है या बहुत कम (Spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stage विश्लेषण",
+      "pregunta_guia": "क्या DAG में अनावश्यक Stages हैं? क्या किसी मध्यवर्ती DataFrame का कई बार पुन: उपयोग किया गया है?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "क्या एक ही DataFrame का कई Actions में पुनर्मूल्यांकन किया जाता है?",
+      "pregunta_guia": "यदि कोई DataFrame बिना Persist किए DAG में कई Action शाखाओं को ट्रिगर करता है, तो हर बार उसकी पूरी तरह से पुनर्गणना (recompute) की जाती है।"
+    },
+    "optimization": {
+      "nombre": "ऑप्टिमाइज़ेशन रणनीतियां",
+      "pregunta_guia": "Shuffle को कम करने, पुनर्गणना से बचने और मेमोरी को कुशलतापूर्वक प्रबंधित करने के लिए कौन सी तकनीकें लागू होती हैं?"
+    },
+    "control_particiones": {
+      "nombre": "भौतिक पार्टीशन नियंत्रण (Physical Partition Control)",
+      "pregunta_guia": "क्या लोड बैलेंसिंग के लिए या आउटपुट फ़ाइलों को कम करने के लिए डेटा को पुनर्वितरित करने की आवश्यकता है?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition बनाम Coalesce",
+      "pregunta_guia": "Repartition: Shuffle उत्पन्न करता है, संतुलित करता है। Coalesce: कोई Shuffle नहीं, पुनर्वितरित किए बिना केवल पार्टीशन कम करता है।"
+    },
+    "persistencia": {
+      "nombre": "मध्यवर्ती DataFrame Persistence",
+      "pregunta_guia": "क्या महंगी पुनर्गणना (recomputation) से बचने के लिए इस मध्यवर्ती DataFrame को मेमोरी/डिस्क में सहेजना उचित है?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache बनाम Checkpoint",
+      "pregunta_guia": "Cache: तेज़, Lineage बनाए रखता है। Checkpoint: DAG Lineage को काटता (truncate) है, डिस्क पर लिखता है, अधिक मज़बूत है।"
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "क्या AQE सक्षम है (Spark 3+)? यह इस पाइपलाइन के लिए कौन से स्वचालित ऑप्टिमाइज़ेशन प्रदान करता है?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE रनटाइम पर निष्पादन योजना को पूरी तरह से बदल सकता है: Shuffle के बाद पार्टीशनों को जोड़ता (coalesce) है, Broadcast में बदलता है और Skewed पार्टीशनों को विभाजित करता है।"
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "कौन सा रिसोर्स मैनेजर Executors का समन्वय करेगा और मेमोरी का प्रबंधन कैसे किया जाता है?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "क्लासिक एंटरप्राइज़ विकल्प। HDFS और MapReduce इकोसिस्टम के साथ एकीकृत।"
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "आधुनिक क्लाउड-नेटिव विकल्प। डॉकराइज़्ड (Dockerized) Executors और आइसोलेशन।"
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Spark Execution और Storage कैश के बीच RAM कैसे आवंटित करेगा?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful बनाम Stateless Streaming",
+      "pregunta_guia": "क्या हमें कई बैचों में डेटा को एग्रीगेट करने की आवश्यकता है (जैसे रोलिंग टोटल, सेशनाइज़ेशन)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (देरी से आने वाला डेटा)",
+      "pregunta_guia": "स्टेट (state) को साफ़ करने से पहले Spark को देरी से आने वाले डेटा के लिए कितनी देर तक प्रतीक्षा करनी चाहिए?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Output Modes",
+      "pregunta_guia": "हम एग्रीगेटेड परिणामों को कैसे लिखते हैं? Append, Update, या Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "डेटा गवर्नेंस और डिस्कवरी (Data Governance & Discovery)",
+      "pregunta_guia": "उपयोगकर्ता इस डेटासेट को कैसे खोजेंगे और इसे एक्सेस करने की अनुमति किसे है?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Catalog सिस्टम (Hive बनाम Unity)",
+      "pregunta_guia": "क्या हमें SQL एक्सेस और Lineage ट्रैकिंग के लिए केंद्रीय Metastore में टेबल पंजीकृत करनी चाहिए?"
+    },
+    "control_acceso": {
+      "nombre": "एक्सेस कंट्रोल (ACLs)",
+      "pregunta_guia": "क्या हमें Fine-Grained Access Control (रो/कॉलम स्तर) की आवश्यकता है या स्टोरेज-स्तरीय IAM पर्याप्त है?"
+    },
+    "tipos_complejos": {
+      "nombre": "जटिल डेटा प्रकार (Complex Data Types)",
+      "pregunta_guia": "क्या हम नेस्टेड संरचनाओं (JSON, Maps, Arrays) के साथ काम कर रहे हैं?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode बनाम Transform",
+      "pregunta_guia": "क्या हम Arrays को पंक्तियों में समतल (explode) करते हैं या उन्हें इनलाइन संशोधित (transform SQL HOF) करते हैं?"
+    },
+    "extraccion_json": {
+      "nombre": "नेस्टेड JSON पार्सिंग",
+      "pregunta_guia": "क्या हमें एकल स्ट्रिंग फ़ील्ड निकालनी चाहिए या पूरे JSON को Spark Struct में पार्स करना चाहिए?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "क्या हार्डवेयर समस्याओं या खराब नोड्स के कारण कुछ टास्क अचानक बहुत धीमे चल रहे हैं?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "उन्नत ट्यूनिंग और Hints",
+      "pregunta_guia": "जब आँकड़े (statistics) विफल हो जाते हैं, तो क्या हम Catalyst Optimizer को मैनुअल रूप से निर्देशित कर सकते हैं?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "यदि ऑप्टिमाइज़र टेबल के आकार का गलत अनुमान लगाता है, तो क्या हमें Join रणनीति को बाध्य (force) करना चाहिए?"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes ट्यूनिंग",
+      "pregunta_guia": "क्या हम लाखों छोटी फ़ाइलें पढ़ रहे हैं या विशाल गैर-विभाज्य (non-splittable) खंड?"
+    }
+  },
+  "edges": {
+    "e01": "चुना गया प्रोसेसिंग मोड प्राप्त करने योग्य लेटेंसी रेंज को परिभाषित करता है। Batch एक मिनट से कम की लेटेंसी की गारंटी नहीं दे सकता।",
+    "e02": "डेटासेट का आकार सीधे तय करता है कि Broadcast Join लागू होगा या नहीं। सीमा से ऊपर होने पर इसे खारिज कर दिया जाता है।",
+    "e03": "यदि डेटासेट Broadcast सीमा को पूरा करता है, तो BHJ इष्टतम डिफ़ॉल्ट विकल्प है।",
+    "e04": "असंतुलित कुंजी वितरण (key distribution) असमान आकार के पार्टीशन बनाता है, जो Data Skew के रूप में प्रकट होता है।",
+    "e05": "Data Skew Sort Merge Join पर गंभीर प्रभाव डालता है: एक ही पार्टीशन पर अधिकांश कार्यभार केंद्रित हो जाता है।",
+    "e06": "AQE सक्षम होने पर, Skew Join ऑप्टिमाइज़र रनटाइम पर ओवरलोड किए गए पार्टीशनों को विभाजित कर देता है।",
+    "e07": "यदि विंडो पार्टीशन कुंजी किसी Skewed कुंजी से मेल खाती है, तो संबंधित Executor ओवरलोड हो जाएगा।",
+    "e08": "BHJ के अलावा कोई भी Join एक Stage सीमा और एक पूर्ण Shuffle ऑपरेशन पेश करता है।",
+    "e09": "groupBy/agg ऑपरेशंस विभिन्न पार्टीशनों से समान पंक्तियों को एकत्र करने के लिए स्वाभाविक रूप से Shuffle उत्पन्न करते हैं।",
+    "e10": "Window फ़ंक्शन डेटा को पार्टीशन और सॉर्ट करने के लिए Shuffle को ट्रिगर करते हैं।",
+    "e11": "~128-200MB ब्लॉक बनाए रखने के लिए Shuffle के बाद का डेटा वॉल्यूम पार्टीशनों की इष्टतम संख्या तय करता है।",
+    "e12": "AQE Shuffle मटेरियलाइज़ेशन बिंदुओं पर कार्य करता है, और परिणामी पार्टीशन संख्या को गतिशील रूप से समायोजित करता है।",
+    "e13": "यदि कोई मध्यवर्ती DataFrame कई Actions का स्रोत है, तो पुनर्गणना से बचने के लिए उसे Persist करने की आवश्यकता होती है।",
+    "e14": "कॉलमनर फॉर्मेट (Parquet, ORC) मूल रूप से Projection Pushdown का समर्थन करते हैं। CSV/JSON नहीं करते।",
+    "e15": "प्रभावी Pushdown मेमोरी में पढ़े जाने वाले डेटा वॉल्यूम को कम करता है, जिससे आगे की आकार सीमाओं में राहत मिलती है।",
+    "e16": "अत्यधिक Shuffle भौतिक पार्टीशन नियंत्रण (Repartition/Coalesce) की आवश्यकता को प्रेरित करता है।",
+    "e17": "सख्त SLAs अतिरिक्त लेटेंसी के कारण Checkpoints (डिस्क राइट्स) को प्रतिबंधित कर सकते हैं।",
+    "e18": "Throughput को प्राथमिकता देने का अर्थ है अधिक पार्टीशन (समानांतरता)। कम Latency के लिए कम टास्क की आवश्यकता होती है।"
+  }
+}

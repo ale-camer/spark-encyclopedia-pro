@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Join 유형 (Join Types)",
+      "description": "PySpark에서 사용 가능한 모든 Join 전략입니다. 각 유형의 동작, 행 선택 로직 및 물리적 실행 방식을 이해하는 것은 정확하고 성능이 뛰어난 파이프라인을 구축하는 데 핵심적입니다."
+    },
+    "window_functions": {
+      "title": "윈도우 함수 (Window Functions)",
+      "description": "현재 행과 관련된 행 집합에 걸쳐 값을 계산하는 고급 분석 연산입니다. 순위 지정(Ranking), 오프셋(Offsets) 및 이동 집계(Rolling Aggregates)를 포함합니다."
+    },
+    "aggregations": {
+      "title": "집계 (Aggregations)",
+      "description": "Spark가 그룹별 요약 통계를 계산하는 방식입니다. Hash Aggregate와 Sort Aggregate의 차이점, 그리고 그룹화가 Shuffle에 미치는 영향을 이해하는 것이 대규모 데이터 처리의 핵심입니다."
+    },
+    "storage_and_pushdown": {
+      "title": "스토리지 및 푸시다운 (Storage & Pushdown)",
+      "description": "디스크의 데이터 레이아웃이 Spark 성능에 미치는 영향입니다. 최적화된 포맷(Parquet/Delta)을 사용하면 Spark가 필요한 데이터만 선택적으로 읽을 수 있습니다."
+    },
+    "persistence_and_caching": {
+      "title": "영속화 및 캐싱 (Persistence & Caching)",
+      "description": "전체 계보(Lineage)를 다시 계산하지 않고 중간 DataFrame을 재사용하는 방법입니다. 반복 알고리즘과 다중 Action 작업에 매우 중요합니다."
+    },
+    "aqe_optimizations": {
+      "title": "핵심 최적화 및 AQE",
+      "description": "Spark가 실제 런타임 데이터 통계를 기반으로 실행 계획을 적응시키는 방식입니다. Adaptive Query Execution (AQE)은 최신 Spark에서 가장 큰 성능 향상을 제공하는 기능입니다."
+    },
+    "infrastructure": {
+      "title": "인프라 및 배포",
+      "description": "Spark가 클러스터 매니저(Cluster Manager)에 연결하고 애플리케이션 수명 주기를 관리하는 방식입니다. 모든 Spark 작업의 기반이 됩니다."
+    },
+    "memory_management": {
+      "title": "통합 메모리 관리 (Unified Memory Management)",
+      "description": "Spark가 연산(Execution)과 캐시(Storage) 간에 Executor RAM을 분할하는 방식입니다. Spark 3.x는 동적으로 공유하는 통합 접근 방식을 사용합니다."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "데이터 스트림을 안정적으로 처리하고, 상태(State)를 관리하며, 순서가 뒤바뀌어 늦게 도착하는 레코드를 처리하기 위한 고급 개념입니다."
+    },
+    "data_governance": {
+      "title": "데이터 거버넌스 및 보안",
+      "description": "Spark가 Catalog와 통합되어 데이터 탐색, 스키마 강제 적용 및 세밀한 접근 제어(FGAC)를 제공하는 방식입니다."
+    },
+    "complex_types": {
+      "title": "복합 데이터 타입 (Complex Data Types)",
+      "description": "Arrays, Structs, Maps 및 원시 JSON 문자열과 같은 비스칼라 데이터를 다룹니다. 최신 API 및 NoSQL 데이터 소스를 처리하는 데 필수적입니다."
+    },
+    "execution_internals": {
+      "title": "실행 엔진 및 Shuffle 내부 구조",
+      "description": "Spark 실행 엔진의 내부 동작 원리입니다. Tungsten, 메모리 관리 및 Speculative Execution(추측 실행)을 이해합니다."
+    },
+    "optimizations_extra": {
+      "title": "고급 최적화 튜닝",
+      "description": "AQE와 같은 자동 메커니즘만으로 충분하지 않거나 통계 정보가 누락되었을 때 Spark를 수동으로 조정하기 위한 설정과 힌트입니다."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join (내부 조인)",
+      "subtitle": "양쪽 모두에서 일치하는 행만 반환",
+      "description": "가장 일반적인 Join 유형입니다. 조인 키가 두 DataFrame 모두에 존재하는 행만 반환합니다. 어느 한쪽이라도 상대방에게 일치하는 항목이 없는 행은 결과에서 완전히 제외됩니다. SQL의 기본 JOIN 또는 INNER JOIN에 해당합니다.",
+      "when_to_use": "양쪽에 상응하는 일치 레코드가 있는 데이터만 필요할 때 사용합니다. 예: 일치하는 고객이 있는 주문, 일치하는 상품이 있는 거래 내역. 일치하지 않는 레코드는 필요 없을 때 적합합니다.",
+      "edge_cases": [
+        "NULL 키는 절대 일치하지 않습니다 — 양쪽 모두 조인 키가 NULL이더라도 NULL 키를 가진 행은 결과에서 제외됩니다.",
+        "오른쪽에 중복 키가 있으면 해당 키들에 대해 카테시안 곱(Cartesian product)이 발생하여 행 수가 늘어납니다.",
+        "다중 컬럼 Inner Join: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join (왼쪽 외부 조인)",
+      "subtitle": "왼쪽의 모든 행과 오른쪽의 일치하는 행 반환",
+      "description": "왼쪽 DataFrame의 모든 행을 반환하며, 오른쪽에 일치하는 항목이 있으면 함께 결합하여 반환합니다. 오른쪽에 일치하는 항목이 없으면 오른쪽 컬럼들은 NULL로 채워집니다. SQL에서는 LEFT JOIN이라고도 부릅니다.",
+      "when_to_use": "왼쪽 DataFrame이 기준이 되는 '단일 진실 공급원(Source of Truth)'이고 오른쪽의 선택적 데이터로 이를 보강(Enrich)하고 싶을 때 사용합니다. 예: 모든 고객과 그들의 최근 주문(있는 경우) 조회. 주문이 없는 고객도 결과에 나타납니다.",
+      "edge_cases": [
+        "오른쪽에 일치하는 항목이 없는 레코드를 찾으려면: Join 후 오른쪽 컬럼이 NULL인 행을 필터링합니다.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — 일치하지 않는 왼쪽 행을 찾습니다.",
+        "오른쪽에 중복 키가 있으면 일치하는 왼쪽 행이 복제되어 여러 번 나타납니다."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join (오른쪽 외부 조인)",
+      "subtitle": "오른쪽의 모든 행과 왼쪽의 일치하는 행 반환",
+      "description": "Left Outer Join의 대칭입니다. 오른쪽 DataFrame의 모든 행을 반환하며, 일치하지 않는 왼쪽 컬럼들은 NULL로 채웁니다. LEFT JOIN보다 덜 쓰입니다 — 보통 두 DataFrame의 위치를 바꾸고 LEFT JOIN을 사용하는 것이 훨씬 직관적입니다.",
+      "when_to_use": "오른쪽 DataFrame이 기준 소스일 때 사용합니다. 실무에서는 DataFrame 순서를 바꿔서 Left Join을 사용하는 것이 코드를 이해하고 추론하기에 더 깔끔합니다.",
+      "edge_cases": [
+        "users.join(orders, 'user_id', 'left')와 동일합니다 — Right Join이 꼭 필요한 경우는 드뭅니다.",
+        "일치하지 않는 오른쪽 행에 대해 왼쪽 컬럼에 NULL 패딩이 발생합니다."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join (전체 외부 조인)",
+      "subtitle": "양쪽의 모든 행을 반환하고, 일치하지 않는 곳은 NULL 채움",
+      "description": "양쪽 DataFrame의 모든 행을 반환합니다. 일치하는 행은 결합되고, 반대쪽에 일치하는 항목이 없는 행은 누락된 쪽의 컬럼이 NULL로 채워집니다. SQL에서는 FULL JOIN 또는 FULL OUTER JOIN이라고도 합니다.",
+      "when_to_use": "데이터 대사(Data Reconciliation)에 사용합니다: 두 소스를 비교하여 한쪽에만 있거나 양쪽 모두에 있는 데이터를 찾습니다. ETL 파이프라인의 변경 감지(SCD Type 2)에 흔히 사용됩니다.",
+      "edge_cases": [
+        "Full Outer Join은 비용이 많이 듭니다 — Broadcast Join 전략을 사용할 수 없으며 항상 전체 Shuffle을 유발합니다.",
+        "A에만 있는 행 찾기: result.filter(result['name_b'].isNull())",
+        "B에만 있는 행 찾기: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (카테시안 곱 / Cartesian Product)",
+      "subtitle": "왼쪽의 모든 행을 오른쪽의 모든 행과 1:1로 짝지음",
+      "description": "카테시안 곱(교차 조인)을 반환합니다: 왼쪽 DataFrame의 각 행이 오른쪽 DataFrame의 모든 행과 짝을 이룹니다. 왼쪽에 M개 행, 오른쪽에 N개 행이 있으면 결과는 M×N개 행이 됩니다. 조인 키가 필요 없습니다. 비용이 극도로 높으므로 주의해서 사용해야 합니다.",
+      "when_to_use": "두 개의 작은 DataFrame의 모든 조합을 생성할 때 사용합니다. 주요 사례: 리포팅 뼈대를 위해 모든 '날짜-상품' 조합을 생성하거나, 각 레코드를 다른 모든 레코드와 비교할 때. 반드시 작은 데이터셋에만 사용하세요.",
+      "edge_cases": [
+        "왼쪽=100만 행, 오른쪽=100만 행이면 → 결과는 1조(TRILLION) 행이 됩니다. 항상 크기를 먼저 확인하세요.",
+        "Spark는 안전장치로 암시적 Cross Join을 실행할 때 spark.sql.crossJoin.enabled=true 설정을 요구합니다.",
+        "성능: 해시 테이블 없이 BroadcastNestedLoopJoin 또는 CartesianProduct 물리 연산자를 사용합니다."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join (왼쪽 세미 조인)",
+      "subtitle": "오른쪽에 일치하는 항목이 있는 왼쪽 행만 반환 — 오른쪽 컬럼은 제외",
+      "description": "오른쪽 DataFrame에 일치하는 항목이 존재하는 왼쪽 DataFrame의 행을 반환하지만, 오른쪽의 컬럼은 전혀 포함하지 않습니다. INNER JOIN과 비슷하지만 오직 왼쪽 컬럼만 얻습니다. 다른 데이터셋을 기준으로 필터링할 때 유용합니다.",
+      "when_to_use": "존재 여부 필터(Existence Filter)로 사용합니다: '주문을 한 번이라도 한 모든 고객을 조회하라' — 여러 번 주문한 고객의 행을 중복 생성하지 않습니다. 오른쪽 컬럼이 필요 없을 때 Inner Join보다 훨씬 효율적입니다.",
+      "edge_cases": [
+        "결과 스키마에는 오직 왼쪽 DataFrame의 컬럼만 포함되며, 오른쪽 컬럼은 나타나지 않습니다.",
+        "오른쪽에 여러 개의 일치 항목이 있어도 왼쪽 행이 중복되지 않습니다(Inner Join과의 차이점).",
+        "동일한 SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join (왼쪽 안티 조인)",
+      "subtitle": "오른쪽에 일치하는 항목이 없는 왼쪽 행만 반환",
+      "description": "Left Semi Join의 반대입니다. 오른쪽에 일치하는 항목이 전혀 없는 왼쪽 DataFrame의 행만 반환합니다. 누락되었거나 고립된 레코드(Orphaned Records)를 찾는 데 완벽합니다. 결과 컬럼은 왼쪽 DataFrame에서만 가져옵니다.",
+      "when_to_use": "다른 테이블에 존재하지 않는 레코드를 찾을 때 사용합니다. 예: 한 번도 주문하지 않은 고객, 판매 이력이 없는 상품, 이번 달에 로그인하지 않은 사용자. 데이터 완전성을 검증할 때도 유용합니다.",
+      "edge_cases": [
+        "조인 키가 NULL인 행: NULL != NULL이므로 왼쪽의 NULL 키는 항상 Anti Join 결과에 포함됩니다.",
+        "동일한 SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "df1.exceptAll(df1.join(df2, ..., 'inner'))보다 훨씬 효율적인 대안입니다."
+      ]
+    },
+    "self_join": {
+      "title": "Self Join (셀프 조인)",
+      "subtitle": "DataFrame을 자기 자신과 조인",
+      "description": "Self Join은 하나의 DataFrame을 자기 자신의 복사본과 조인하는 것입니다. 계층적 관계를 다루거나 동일한 데이터셋 내의 행들을 서로 비교할 때 사용됩니다. 양쪽을 구분하기 위해 별칭(Alias) 지정이 필수적입니다.",
+      "when_to_use": "활용 사례: 같은 테이블 내에서 관리자-직원 관계 찾기, 각 행을 다른 행들과 비교하기(예: 중복 거래 내역 찾기), 또는 단일 테이블에 저장된 트리/그래프 구조 탐색.",
+      "edge_cases": [
+        "Self Join의 양쪽에 항상 별칭(alias)을 지정하세요 — 별칭이 없으면 Spark가 컬럼 모호성을 해결할 수 없습니다.",
+        "깊은 계층 구조(2단계 이상)의 경우 계보(Lineage) 폭발을 방지하기 위해 GraphX를 사용하거나 .checkpoint()와 함께 반복 조인을 사용하세요.",
+        "Inner 조건의 Self Join은 N²개의 조합을 생성할 수 있으므로 신중하게 필터링해야 합니다."
+      ]
+    },
+    "ranking_functions": {
+      "title": "순위 함수: row_number vs rank vs dense_rank",
+      "subtitle": "중복 값(동점) 처리 및 번호 부여 규칙",
+      "description": "이 함수들은 윈도우 파티션 내의 각 행에 순차적인 번호를 할당합니다. 주요 차이점은 동점(ORDER BY 절에서 동일한 값을 가진 행)을 처리하는 방식입니다.",
+      "when_to_use": "고유 식별자가 필요할 때는 row_number, 일반적인 경쟁 순위 방식(동점 이후 번호 건너뛰기: 1, 2, 2, 4)에는 rank, 빈틈없는 연속 순위(건너뛰기 없음: 1, 2, 2, 3)에는 dense_rank를 사용합니다.",
+      "edge_cases": [
+        "orderBy를 지정하지 않으면 row_number 결과가 비결정적(실행할 때마다 달라짐)일 수 있습니다.",
+        "카디널리티가 낮거나 치우친 컬럼으로 파티셔닝하거나 파티션 없이 윈도우를 적용하면 메모리 압박을 유발할 수 있습니다."
+      ]
+    },
+    "offset_functions": {
+      "title": "오프셋 함수: lag vs lead",
+      "subtitle": "이전 또는 다음 레코드에 접근",
+      "description": "lag와 lead를 사용하면 Self Join을 수행하지 않고도 다른 행(현재 행의 이전 또는 이후)의 데이터에 접근할 수 있습니다. lag는 N행 이전을 참조하고, lead는 N행 이후를 참조합니다.",
+      "when_to_use": "시계열 분석에 완벽합니다: 전월 대비 성장률 계산, 상태 변경 감지, 또는 이벤트 간의 시간 차이 계산에 주로 사용됩니다.",
+      "edge_cases": [
+        "첫 번째/마지막 행에서 NULL이 발생하는 것을 방지하려면 기본값(default 인자) 설정이 중요합니다.",
+        "일관되고 안정적인 lag/lead 결과를 얻으려면 정렬 기준(orderBy)이 엄격해야 합니다."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "기본이자 가장 빠른 집계 방식",
+      "description": "Spark는 메모리에 그룹화 컬럼을 키로, 누적 집계 값을 밸류로 하는 해시 맵(Hash Map)을 구축합니다. Executor에서의 부분 집계(Partial Aggregation)와 Shuffle 이후의 최종 집계(Final Aggregation) 두 단계로 작동합니다.",
+      "when_to_use": "대부분의 groupBy 연산에서 기본 선택지입니다. 파티션의 고유 그룹들이 Executor 메모리 힙에 들어갈 수 있는 한 매우 빠르게 동작합니다.",
+      "edge_cases": [
+        "메모리 압박: 고유 키가 너무 많으면 Spark가 디스크로 스필(Spill)하거나 SortAggregate로 폴백(Fallback)할 수 있습니다.",
+        "고카디널리티(High Cardinality) 그룹: 편향된 Shuffle(Data Skew)을 유발할 수 있습니다."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "대규모 그룹을 위한 Spill-safe 폴백 방식",
+      "description": "데이터가 그룹화 키로 정렬되어 있어야 합니다. 그런 다음 Spark는 정렬된 데이터를 순회하면서 새로운 키가 나타날 때까지 해당 키의 값을 누적합니다.",
+      "when_to_use": "그룹화 키가 너무 커서 해시 맵에 들어가지 않거나 데이터가 이미 정렬되어 있을 때 사용됩니다. HashAggregate보다 느리지만 임의 접근 해시 맵이 필요하지 않아 메모리 측면에서 훨씬 견고합니다.",
+      "edge_cases": [
+        "데이터가 아직 정렬되어 있지 않다면 추가적인 정렬 오버헤드가 발생합니다.",
+        "Spill-safe: HashAggregate처럼 쉽게 OOM(메모리 부족)으로 크래시되지 않습니다."
+      ]
+    },
+    "columnar_formats": {
+      "title": "컬럼형 vs 행 기반 포맷 (Columnar vs Row Formats)",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "컬럼형 포맷은 행 단위가 아닌 열(Column) 단위로 데이터를 저장합니다. Spark가 SELECT 절에 없는 전체 컬럼을 통째로 건너뛸 수 있기 때문에 분석 쿼리(OLAP)에 매우 효율적입니다.",
+      "when_to_use": "대규모 분석 워크로드에는 항상 Parquet 또는 Delta를 사용하세요. 원시 데이터 수집 영역(Landing Zone) 이외의 용도로는 CSV/JSON 사용을 피하세요.",
+      "edge_cases": [
+        "스키마 진화(Schema Evolution)는 Delta Lake에서 더 잘 처리됩니다.",
+        "행 기반 포맷(Avro)은 높은 처리량의 쓰기나 스트리밍 작업에 더 적합합니다."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "스토리지 계층에서 데이터 필터링",
+      "description": "Spark는 FILTER(WHERE 절)와 SELECT를 스토리지 계층으로 밀어냅니다(Pushdown). 리더(Parquet/Delta)는 필터 조건에 일치하는 행과 열만 반환하므로 I/O를 획기적으로 줄여줍니다.",
+      "when_to_use": "성능에 필수적입니다. 포맷이 지원하면 Spark가 자동으로 수행합니다. 자주 필터링하는 컬럼을 기준으로 데이터를 파티셔닝해 두어야 효과를 극대화할 수 있습니다.",
+      "edge_cases": [
+        "UDF(사용자 정의 함수)나 복잡한 표현식에는 Pushdown이 작동하지 않습니다.",
+        "필터는 일반적으로 최상위 컬럼에 적용되어야 합니다."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "메모리 및 계보(Lineage) 관리",
+      "description": "cache()는 persist(MEMORY_AND_DISK)의 단축 표현입니다. DataFrame이 처음 계산된 후 이를 메모리(메모리가 부족하면 디스크)에 저장하도록 Spark에 지시합니다.",
+      "when_to_use": "동일한 DataFrame이 여러 다운스트림 Action에서 재사용될 때 사용합니다. 예: 요약 통계를 계산한 다음 동일한 원시 데이터를 저장하는 경우."
+    },
+    "checkpointing": {
+      "title": "Checkpointing (체크포인팅)",
+      "subtitle": "안전성을 위해 계보(Lineage) 끊기",
+      "description": "cache와 달리 checkpoint()는 데이터를 안정적인 스토리지(HDFS/S3)에 저장하고 계보(Lineage)를 완전히 절단(Truncate)합니다. 이를 통해 계보 체인이 너무 길어져 StackOverflowError가 발생하는 것을 방지합니다.",
+      "when_to_use": "반복 알고리즘(머신러닝 등)이나 계보가 극도로 복잡할 때 사용합니다. cache보다 느리지만 훨씬 안정적입니다."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "최신 Spark (3.x+)의 두뇌",
+      "description": "AQE는 쿼리 Stage '사이'에 쿼리 실행 계획을 재최적화합니다. 완료된 Stage의 런타임 통계를 사용하여 남은 Stage의 계획을 개선합니다.",
+      "when_to_use": "Spark 3.2+에서 기본으로 활성화되어 있습니다. 항상 켜두세요. 세 가지 주요 문제를 해결합니다: 파티션 병합(Coalescing partitions), Join 전략 전환, 그리고 Skew Join 최적화."
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join Optimization",
+      "subtitle": "불균형한 데이터 분포 처리",
+      "description": "Data Skew는 한 파티션에 다른 파티션보다 훨씬 많은 데이터가 몰려 특정 태스크가 10배 이상 오래 걸릴 때 발생합니다. AQE는 이를 감지하고 편향된 파티션을 더 작은 하위 파티션들로 분할합니다.",
+      "when_to_use": "Spark UI에서 유독 늦게 끝나는 '지연 태스크(Straggler tasks)'가 보일 때 유용합니다. AQE는 평균보다 훨씬 큰 파티션을 찾아 이를 자동으로 처리합니다."
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "리소스 오케스트레이션 전략",
+      "description": "Spark는 다양한 클러스터 매니저 위에서 실행될 수 있습니다. YARN은 전통적인 Hadoop 매니저이며, Kubernetes(K8s)는 현대적인 클라우드 네이티브 접근 방식입니다.",
+      "when_to_use": "레거시 온프레미스 Hadoop 클러스터에는 YARN을 사용하세요. 더 나은 격리성과 오토스케일링이 필요한 클라우드 네이티브 컨테이너 환경에는 K8s를 사용하세요."
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode",
+      "subtitle": "Driver는 어디에서 실행되는가?",
+      "description": "Client Mode에서는 작업을 제출한 머신에서 Driver가 실행됩니다. Cluster Mode에서는 클러스터 내부(Worker 노드)에서 Driver가 실행됩니다.",
+      "when_to_use": "대화형 디버깅이나 노트북 환경에서는 Client Mode를 사용하세요. 프로덕션 작업에서는 네트워크 지연을 피하고 로컬 머신 연결이 끊어졌을 때 Driver가 실패하는 것을 방지하기 위해 Cluster Mode를 사용하세요."
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Memory",
+      "subtitle": "동적인 메모리 경계",
+      "description": "Execution Memory는 Shuffle/Join에 사용되고, Storage Memory는 캐싱에 사용됩니다. 두 영역은 동일한 풀을 공유하며, 한쪽이 비어 있으면 다른 쪽에서 메모리를 빌려 쓸 수 있습니다.",
+      "when_to_use": "대규모 캐싱이나 거대한 Shuffle 작업이 있는 경우 spark.memory.fraction(기본값 0.6)과 spark.memory.storageFraction(기본값 0.5)을 조정하세요."
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Late Data (워터마크와 지연 데이터)",
+      "subtitle": "상태 유지 스트림에서 메모리 사용량 제한",
+      "description": "워터마크(Watermark)는 뒤따라가는 시간 임계값입니다. 관측된 최대 이벤트 시간이 T이고 워터마크가 W인 경우, 이벤트 시간이 (T - W)보다 오래된 지연 데이터는 버려집니다. 이를 통해 Spark는 메모리에서 오래된 상태를 정리할 수 있습니다.",
+      "when_to_use": "Structured Streaming에서 이벤트 시간(Event Time) 기반의 집계나 조인을 사용할 때는 필수입니다. 워터마크가 없으면 상태가 무한히 커져 결국 OOM이 발생합니다."
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes (스트리밍 출력 모드)",
+      "subtitle": "Spark가 스트림 결과를 기록하는 방식",
+      "description": "1. Append: 절대 변경되지 않을 '새로운' 행만 기록합니다(집계 시 Watermark 필요).\n2. Update: 마지막 트리거에서 업데이트된 행만 기록합니다.\n3. Complete: 매 트리거마다 전체 결과 테이블을 새로 기록합니다.",
+      "when_to_use": "로그나 파일 저장에는 Append, 데이터베이스에 변경분을 기록할 때는 Update, 작은 참조 테이블이나 전체 카운트 집계에는 Complete를 사용합니다."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "테이블 및 메타데이터 중앙 집중화",
+      "description": "Catalog 또는 Metastore는 모든 데이터셋의 중앙 디렉토리 역할을 합니다. 테이블 이름(예: \"sales.customers\")을 물리적 파일(예: \"s3://bucket/path/parquet/\")에 매핑합니다. Hive Metastore(HMS)는 레거시 오픈소스 표준이며, Unity Catalog는 Lakehouse를 위한 현대적인 엔터프라이즈 표준입니다.",
+      "when_to_use": "프로덕션 환경에서는 항상 Catalog를 사용하세요. 코드에서 순수 파일 경로에만 의존하지 마세요. 물리적 스토리지와 논리적 테이블을 분리하여 원활한 마이그레이션을 가능하게 합니다."
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "행 및 열 수준 보안",
+      "description": "스토리지 수준 보안(IAM 역할)은 디렉토리(버킷 수준)만 보호합니다. Unity Catalog나 AWS Lake Formation 같은 최신 카탈로그를 사용하면 SQL GRANT 문을 작성하여 특정 행(예: \"UK\" 사용자만 UK 행 조회 가능)이나 열(주민번호/SSN 마스킹)에 대한 접근을 제한할 수 있습니다.",
+      "when_to_use": "PII(개인식별정보) 처리, GDPR 규정 준수 및 멀티테넌트 데이터 플랫폼 구축에 필수적입니다."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions (고차 함수)",
+      "subtitle": "Array 컬럼 관리",
+      "description": "배열은 explode()를 사용하여 여러 행으로 펼칠(Unnest) 수 있지만, 이는 데이터셋 크기를 배가시킵니다. 대안으로 고차 함수(transform, filter 등)를 사용하면 행을 추가하지 않고 배열 내부에서 직접 map/reduce 연산을 수행할 수 있습니다.",
+      "when_to_use": "개별 배열 항목별로 그룹화하거나 조인해야 한다면 explode()를 사용하세요. 원래 행 수를 유지하면서 배열 값만 변경(예: 모든 세금에 1.2 곱하기)하려는 경우 transform()을 사용하세요."
+    },
+    "json_parsing": {
+      "title": "JSON 파싱: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "JSON 텍스트 컬럼을 다룰 때 단일 경로를 문자열로 추출(get_json_object)하거나, 스키마를 사용하여 전체 JSON 문자열을 네이티브 Spark StructType으로 변환(from_json)할 수 있습니다.",
+      "when_to_use": "가능한 한 정의된 스키마와 함께 from_json()을 사용하세요. JSON을 한 번만 파싱하여 타입이 지정된 컬럼에 저장하므로 동일한 행에서 get_json_object()를 여러 번 호출하는 것보다 훨씬 빠릅니다."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution (추측 실행)",
+      "subtitle": "지연 태스크(Stragglers) 처리",
+      "description": "클러스터의 특정 노드에 문제(디스크 결함, 네트워크 문제)가 생기면 단일 태스크가 나머지보다 10배 더 오래 걸릴 수 있습니다(Straggler). Speculative Execution은 이를 감지하여 정상 노드에서 복제된 태스크를 실행하고, 먼저 끝나는 쪽의 결과를 채택합니다.",
+      "when_to_use": "불안정한 클라우드 환경이나 이기종 클러스터에서 켜두세요(spark.speculation=true). 단, 태스크가 외부 데이터베이스에 쓰는 경우 주의해야 합니다(멱등성/Idempotency 필수!)."
+    },
+    "broadcast_hints": {
+      "title": "Join Hints (조인 힌트)",
+      "subtitle": "Catalyst 옵티마이저 재정의",
+      "description": "때때로 Spark는 정확한 통계 정보가 부족하여(예: 정리되지 않은 데이터 레이크에서 읽기) 테이블이 브로드캐스트할 만큼 작다는 것을 인지하지 못합니다. Broadcast Hint는 Spark가 BroadcastHashJoin을 사용하도록 강제합니다.",
+      "when_to_use": "UI에서 느린 SortMergeJoin을 발견했고 한쪽 테이블이 Executor 메모리에 충분히 들어간다는 것을 확실히 알고 있을 때(기본 임계값은 10MB이지만 일반적으로 1GB 미만까지 가능) 사용합니다."
+    },
+    "max_partition_bytes": {
+      "title": "파일 및 maxPartitionBytes",
+      "subtitle": "읽기 파티션 튜닝",
+      "description": "수백 개의 작은 CSV/JSON 파일을 읽을 때 Spark가 파일 1개를 파티션 1개에 매핑하면 오버헤드가 발생합니다. spark.sql.files.maxPartitionBytes(기본값 128MB)를 사용하면 읽기 시점에 여러 개의 작은 파일을 단일 파티션으로 묶을(Packing) 수 있습니다.",
+      "when_to_use": "읽기 Stage에 각각 10ms씩 걸리는 수천 개의 태스크가 있다면 '작은 파일 증후군(Tiny-file syndrome)'을 겪고 있는 것입니다. maxPartitionBytes를 조정하거나 파일 패킹을 사용하세요."
+    }
+  }
+}

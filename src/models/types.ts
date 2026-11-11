@@ -3,13 +3,42 @@ export interface Metadata {
   version: string;
   descripcion: string;
   nivel_audiencia: string;
-  convenciones: {
+  convenciones?: {
     tipos_nodo: Record<string, string>;
     tipos_enlace: Record<string, string>;
   };
 }
 
-export type NodeType = 'decision' | 'problem' | 'concept';
+export type NodeType = 'phase' | 'decision' | 'problem' | 'concept' | 'optimization';
+
+export type EdgeRelationType =
+  | 'cause_effect'
+  | 'restriction'
+  | 'mitigation'
+  | 'enabler'
+  | 'determinant'
+  | 'trigger'
+  | 'execution_risk';
+
+export const EDGE_RELATION_LABELS: Record<EdgeRelationType, string> = {
+  cause_effect: 'Cause → Effect',
+  restriction: 'Restriction',
+  mitigation: 'Mitigation',
+  enabler: 'Enabler',
+  determinant: 'Determinant',
+  trigger: 'Trigger',
+  execution_risk: 'Execution Risk',
+};
+
+export const EDGE_RELATION_COLORS: Record<EdgeRelationType, string> = {
+  cause_effect: '#f97316',
+  restriction: '#ef4444',
+  mitigation: '#10b981',
+  enabler: '#06b6d4',
+  determinant: '#a855f7',
+  trigger: '#eab308',
+  execution_risk: '#e11d48',
+};
 
 export interface SparkNode {
   id: string;
@@ -29,7 +58,7 @@ export interface TransversalLink {
   id: string;
   origen: string;
   destino: string;
-  tipo: string;
+  tipo: EdgeRelationType;
   descripcion: string;
 }
 

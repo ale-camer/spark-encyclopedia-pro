@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spark-learning.local/schemas/spark_reference.schema.json",
+  "title": "Spark Technical Encyclopedia Reference Library",
+  "description": "Schema for the 13 sections and 30 deep-dive technical articles of the Spark Encyclopedia.",
+  "type": "object",
+  "required": ["sections"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "sections": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/ReferenceSection"
+      }
+    }
+  },
+  "definitions": {
+    "ReferenceSection": {
+      "type": "object",
+      "required": ["id", "title", "icon", "description", "entries"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_docs_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/ReferenceEntry"
+          }
+        }
+      }
+    },
+    "ReferenceEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "subtitle",
+        "tags",
+        "syntax",
+        "description",
+        "when_to_use",
+        "edge_cases",
+        "codigo_pyspark",
+        "salida_consola",
+        "diagrama_mermaid"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subtitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "syntax": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "when_to_use": {
+          "type": "string",
+          "minLength": 1
+        },
+        "edge_cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "codigo_pyspark": {
+          "type": "string",
+          "minLength": 1
+        },
+        "salida_consola": {
+          "type": "string",
+          "minLength": 1
+        },
+        "diagrama_mermaid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_docs_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

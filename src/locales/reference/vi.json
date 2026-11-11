@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Các loại Join (Join Types)",
+      "description": "Tất cả các chiến lược Join có sẵn trong PySpark. Việc hiểu rõ hành vi, logic chọn hàng và cách thực thi vật lý của từng loại là yếu tố sống còn để xây dựng các pipeline chính xác và có hiệu năng cao."
+    },
+    "window_functions": {
+      "title": "Các hàm Window (Window Functions)",
+      "description": "Các phép toán phân tích nâng cao giúp tính toán giá trị trên một tập hợp các hàng có liên quan đến hàng hiện tại. Bao gồm xếp hạng (ranking), dịch chuyển (offsets) và tổng hợp trượt (rolling aggregates)."
+    },
+    "aggregations": {
+      "title": "Tổng hợp dữ liệu (Aggregations)",
+      "description": "Cách Spark tính toán các số liệu thống kê tóm tắt trên các nhóm. Hiểu rõ sự khác biệt giữa Hash và Sort Aggregate cũng như tác động của việc gom nhóm lên Shuffle là chìa khóa khi xử lý dữ liệu quy mô lớn."
+    },
+    "storage_and_pushdown": {
+      "title": "Lưu trữ & Pushdown",
+      "description": "Cách bố trí dữ liệu trên đĩa ảnh hưởng đến hiệu năng của Spark. Các định dạng tối ưu (Parquet/Delta) cho phép Spark chỉ đọc đúng phần dữ liệu mà nó thực sự cần."
+    },
+    "persistence_and_caching": {
+      "title": "Persistence & Caching",
+      "description": "Cách tái sử dụng các DataFrame trung gian mà không cần tính toán lại toàn bộ Lineage. Cực kỳ quan trọng đối với các thuật toán lặp và khi có nhiều Action."
+    },
+    "aqe_optimizations": {
+      "title": "Tối ưu hóa cốt lõi & AQE",
+      "description": "Cách Spark tự động điều chỉnh kế hoạch thực thi tại thời điểm chạy dựa trên số liệu thống kê dữ liệu thực tế. Adaptive Query Execution (AQE) là bước nhảy vọt lớn nhất về hiệu năng trong Spark hiện đại."
+    },
+    "infrastructure": {
+      "title": "Hạ tầng & Triển khai",
+      "description": "Cách Spark kết nối với các trình quản lý cụm (Cluster Managers) và quản lý vòng đời ứng dụng. Đây là nền tảng của mọi công việc (job) trong Spark."
+    },
+    "memory_management": {
+      "title": "Quản lý bộ nhớ hợp nhất (Unified Memory Management)",
+      "description": "Cách Spark phân chia RAM của Executor giữa việc tính toán (Execution) và bộ nhớ đệm (Storage). Spark 3.x sử dụng cách tiếp cận hợp nhất linh hoạt."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Các khái niệm nâng cao để xử lý luồng dữ liệu một cách đáng tin cậy, quản lý trạng thái (state) và xử lý các bản ghi đến muộn hoặc sai thứ tự."
+    },
+    "data_governance": {
+      "title": "Quản trị & Bảo mật dữ liệu",
+      "description": "Cách Spark tích hợp với các Catalog để cung cấp khả năng khám phá dữ liệu,บังคับ lược đồ (schema enforcement) và kiểm soát truy cập chi tiết."
+    },
+    "complex_types": {
+      "title": "Các kiểu dữ liệu phức tạp",
+      "description": "Làm việc với dữ liệu phi vô hướng như Arrays, Structs, Maps và chuỗi JSON thô. Thiết yếu cho các nguồn dữ liệu từ API hiện đại và NoSQL."
+    },
+    "execution_internals": {
+      "title": "Cơ chế thực thi & Shuffle bên trong",
+      "description": "Bên dưới nắp máy của Spark Execution Engine. Tìm hiểu về Tungsten, quản lý bộ nhớ và cơ chế chạy dự phòng tác vụ (Speculative Execution)."
+    },
+    "optimizations_extra": {
+      "title": "Tinh chỉnh tối ưu hóa nâng cao",
+      "description": "Các nút vặn thủ công để tinh chỉnh Spark khi các cơ chế tự động (như AQE) là chưa đủ hoặc khi bị thiếu số liệu thống kê."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Chỉ trả về các hàng khớp nhau từ cả hai phía",
+      "description": "Loại Join phổ biến nhất. Trả về các hàng mà khóa Join tồn tại ở CẢ HAI DataFrame. Các hàng từ bất kỳ phía nào không có bản ghi khớp ở phía bên kia sẽ bị loại bỏ hoàn toàn. Trong SQL: chính là JOIN hoặc INNER JOIN cổ điển.",
+      "when_to_use": "Sử dụng khi bạn chỉ quan tâm đến các bản ghi có dữ liệu khớp tương ứng. Ví dụ: các đơn hàng có thông tin khách hàng hợp lệ, các giao dịch có sản phẩm tương ứng. Nếu một bản ghi không khớp, bạn không muốn lấy nó.",
+      "edge_cases": [
+        "Các khóa NULL không bao giờ khớp với nhau — các hàng có giá trị NULL tại khóa Join sẽ bị loại khỏi kết quả ngay cả khi cả hai phía đều là NULL.",
+        "Các khóa trùng lặp ở phía bên phải sẽ tạo ra tích Đề-các (Cartesian product) cho những khóa đó.",
+        "Inner join trên nhiều cột: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Tất cả các hàng từ bên trái, các hàng khớp từ bên phải",
+      "description": "Trả về TẤT CẢ các hàng từ DataFrame bên trái, cộng với hàng khớp từ bên phải nếu có. Khi không có bản ghi khớp ở bên phải, các cột phía bên phải sẽ được điền giá trị NULL. Còn được gọi là LEFT JOIN trong SQL.",
+      "when_to_use": "Sử dụng khi DataFrame bên trái là 'nguồn dữ liệu chuẩn' (source of truth) và bạn muốn làm giàu nó bằng dữ liệu tùy chọn từ bên phải. Ví dụ: lấy danh sách tất cả khách hàng cùng đơn hàng gần nhất của họ (nếu có). Khách hàng chưa từng đặt hàng vẫn xuất hiện.",
+      "edge_cases": [
+        "Để tìm các bản ghi KHÔNG có dữ liệu khớp ở bên phải: lọc những hàng mà cột bên phải có giá trị NULL sau khi Join.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — tìm các hàng bên trái không có bản ghi khớp.",
+        "Nếu phía bên phải có các khóa trùng lặp, các hàng bên trái khớp với chúng sẽ bị nhân bản."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Tất cả các hàng từ bên phải, các hàng khớp từ bên trái",
+      "description": "Hình ảnh phản chiếu của Left Outer Join. Trả về TẤT CẢ các hàng từ DataFrame bên phải, điền NULL cho các cột bên trái không khớp. Ít phổ biến hơn LEFT — thông thường bạn có thể đổi chỗ hai DataFrame và dùng LEFT để dễ hình dung hơn.",
+      "when_to_use": "Sử dụng khi DataFrame bên phải là nguồn dữ liệu chính thống. Trên thực tế, việc hoán đổi vị trí hai DataFrame và sử dụng Left Join thường gọn gàng và dễ tư duy hơn.",
+      "edge_cases": [
+        "Tương đương với: users.join(orders, 'user_id', 'left') — Right Join hiếm khi thực sự cần thiết.",
+        "Việc điền giá trị NULL (NULL padding) diễn ra ở các cột phía BÊN TRÁI đối với các hàng bên phải không khớp."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Tất cả các hàng từ cả hai phía, điền NULL ở những nơi không khớp",
+      "description": "Trả về TẤT CẢ các hàng từ CẢ HAI DataFrame. Các hàng khớp nhau sẽ được kết hợp lại. Các hàng không có bản ghi khớp ở phía đối diện sẽ được điền NULL vào những cột bị thiếu. Còn được gọi là FULL JOIN hoặc FULL OUTER JOIN trong SQL.",
+      "when_to_use": "Sử dụng để đối soát dữ liệu (data reconciliation): so sánh hai nguồn để tìm ra những gì có ở nguồn này nhưng không có ở nguồn kia, hoặc có ở cả hai. Rất phổ biến trong các pipeline ETL để phát hiện thay đổi (SCD Type 2).",
+      "edge_cases": [
+        "Full Outer Join rất tốn kém — nó không thể sử dụng chiến lược Broadcast Join và luôn dẫn đến một phép Shuffle toàn phần.",
+        "Để tìm các hàng CHỈ có trong A: result.filter(result['name_b'].isNull())",
+        "Để tìm các hàng CHỈ có trong B: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Tích Đề-các / Cartesian Product)",
+      "subtitle": "Mọi hàng ở bên trái được ghép cặp với mọi hàng ở bên phải",
+      "description": "Trả về tích Đề-các: mỗi hàng của DataFrame bên trái được ghép với TẤT CẢ từng hàng của DataFrame bên phải. Nếu bên trái có M hàng và bên phải có N hàng, kết quả sẽ có M×N hàng. Không cần khóa Join. Cực kỳ tốn tài nguyên — hãy sử dụng hết sức thận trọng.",
+      "when_to_use": "Sử dụng để tạo ra mọi tổ hợp của hai DataFrame nhỏ. Phổ biến khi: tạo tất cả các tổ hợp ngày-sản phẩm cho khung báo cáo, hoặc so sánh từng bản ghi với mọi bản ghi khác. CHỈ sử dụng trên các tập dữ liệu nhỏ.",
+      "edge_cases": [
+        "Nếu bên trái = 1 triệu hàng và bên phải = 1 triệu hàng → kết quả = 1 NGHÌN TỶ hàng. Luôn kiểm tra kích thước trước tiên.",
+        "Spark yêu cầu bật spark.sql.crossJoin.enabled=true đối với các Cross Join ngầm định như một chốt chặn an toàn.",
+        "Hiệu năng: sử dụng toán tử vật lý BroadcastNestedLoopJoin hoặc CartesianProduct — không dùng bảng băm (hash table)."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Trả về các hàng bên trái có khớp với bên phải — loại bỏ các cột bên phải",
+      "description": "Trả về các hàng từ DataFrame BÊN TRÁI có bản ghi khớp ở bên phải, NHƯNG không bao gồm bất kỳ cột nào từ phía bên phải. Nó giống như INNER JOIN nhưng bạn chỉ lấy các cột bên trái. Rất hữu ích khi dùng làm bộ lọc dựa trên một tập dữ liệu khác.",
+      "when_to_use": "Sử dụng như một bộ lọc kiểm tra sự tồn tại: 'Lấy cho tôi tất cả khách hàng đã đặt ít nhất một đơn hàng' — mà không làm nhân bản dòng khách hàng đối với những người có nhiều đơn hàng. Hiệu quả hơn Inner Join khi bạn không cần các cột phía bên phải.",
+      "edge_cases": [
+        "Lược đồ (schema) kết quả chỉ chứa các cột của DataFrame BÊN TRÁI — không có cột bên phải nào xuất hiện.",
+        "Có nhiều bản ghi khớp ở bên phải cũng KHÔNG làm nhân bản các hàng bên trái (khác với Inner Join).",
+        "SQL tương đương: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Trả về các hàng bên trái KHÔNG có bản ghi khớp ở bên phải",
+      "description": "Ngược lại với Left Semi Join. Trả về các hàng từ DataFrame BÊN TRÁI mà KHÔNG tồn tại bản ghi khớp nào ở phía bên phải. Hoàn hảo để tìm kiếm các bản ghi bị thiếu hoặc mồ côi (orphaned records). Các cột kết quả chỉ lấy từ DataFrame bên trái.",
+      "when_to_use": "Sử dụng để tìm các bản ghi KHÔNG tồn tại trong một bảng khác. Ví dụ: khách hàng chưa từng đặt hàng, sản phẩm chưa có doanh số, người dùng chưa đăng nhập trong tháng này. Cũng rất hữu ích để kiểm tra tính toàn vẹn của dữ liệu.",
+      "edge_cases": [
+        "Các hàng có khóa Join là NULL: vì NULL != NULL nên các khóa NULL ở bên trái sẽ luôn xuất hiện trong kết quả Anti Join.",
+        "SQL tương đương: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Giải pháp thay thế hiệu quả hơn nhiều so với: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Ghép nối một DataFrame với chính nó",
+      "description": "Self Join là khi bạn ghép nối một DataFrame với một bản sao của chính nó. Được sử dụng cho các mối quan hệ phân cấp hoặc để so sánh các hàng trong cùng một tập dữ liệu. Bắt buộc phải đặt bí danh (alias) để phân biệt hai phía.",
+      "when_to_use": "Sử dụng để: tìm mối quan hệ quản lý - nhân viên trong cùng một bảng, so sánh từng hàng với các hàng khác (ví dụ: tìm giao dịch trùng lặp), hoặc duyệt cấu trúc cây/đồ thị được lưu trong một bảng.",
+      "edge_cases": [
+        "Luôn đặt bí danh (alias) cho cả hai phía của Self Join — nếu không có bí danh, Spark không thể phân giải sự nhập nhằng tên cột.",
+        "Đối với các cấu trúc phân cấp sâu (hơn 2 cấp), hãy dùng GraphX hoặc các phép Join lặp kết hợp với .checkpoint() để tránh bùng nổ Lineage.",
+        "Self Join kiểu Inner sẽ tạo ra N² tổ hợp — hãy lọc thật cẩn thận."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Xếp hạng: row_number so với rank so với dense_rank",
+      "subtitle": "Quản lý dữ liệu trùng lặp và quy tắc đánh số thứ tự",
+      "description": "Các hàm này gán một số thứ tự tuần tự cho mỗi hàng trong một phân vùng Window. Sự khác biệt chính nằm ở cách chúng xử lý các trường hợp đồng hạng (các hàng có cùng giá trị trong mệnh đề order by).",
+      "when_to_use": "Sử dụng row_number để tạo mã định danh duy nhất, rank cho kiểu xếp hạng thi đấu (nhảy cóc thứ hạng tiếp theo khi đồng hạng), và dense_rank cho xếp hạng liên tiếp (không có khoảng trống thứ hạng).",
+      "edge_cases": [
+        "Nếu không chỉ định orderBy, kết quả của row_number có thể không nhất quán (non-deterministic).",
+        "Phân vùng theo các cột có số lượng giá trị duy nhất quá cao (high-cardinality) có thể gây áp lực lớn lên bộ nhớ."
+      ]
+    },
+    "offset_functions": {
+      "title": "Dịch chuyển (Offset): lag so với lead",
+      "subtitle": "Truy cập bản ghi phía trước hoặc phía sau",
+      "description": "Lag và Lead cho phép bạn truy cập dữ liệu từ các hàng khác (trước hoặc sau hàng hiện tại) mà không cần thực hiện Self-Join. Lag nhìn lùi lại N hàng, còn Lead nhìn tiến lên N hàng.",
+      "when_to_use": "Hoàn hảo cho phân tích chuỗi thời gian (time-series): tính toán mức tăng trưởng theo từng tháng, phát hiện thay đổi trạng thái hoặc tìm khoảng cách thời gian giữa các sự kiện.",
+      "edge_cases": [
+        "Các giá trị mặc định rất quan trọng để tránh nhận giá trị NULL ở hàng đầu tiên hoặc hàng cuối cùng.",
+        "Thứ tự sắp xếp (ordering) phải chặt chẽ để kết quả của lag/lead được ổn định."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "Phương pháp tổng hợp mặc định và nhanh nhất",
+      "description": "Spark xây dựng một bảng băm (hash map) trong bộ nhớ, trong đó khóa là các cột gom nhóm và giá trị là các kết quả tổng hợp đang chạy. Nó hoạt động qua hai giai đoạn: tổng hợp cục bộ (trên các Executor) và tổng hợp cuối cùng (sau khi Shuffle).",
+      "when_to_use": "Lựa chọn mặc định cho hầu hết các phép groupBy. Nó cực kỳ nhanh miễn là các nhóm duy nhất của một phân vùng nằm vừa trong bộ nhớ heap của Executor.",
+      "edge_cases": [
+        "Áp lực bộ nhớ: Nếu có quá nhiều khóa duy nhất, Spark có thể phải tràn dữ liệu ra đĩa (spill to disk) hoặc chuyển về dùng SortAggregate.",
+        "Các nhóm có độ phân tán (cardinality) cao: Có thể dẫn đến hiện tượng lệch dữ liệu khi Shuffle (skewed shuffles)."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "Phương án dự phòng an toàn bộ nhớ (spill-safe) cho các nhóm khổng lồ",
+      "description": "Yêu cầu dữ liệu phải được sắp xếp theo các khóa gom nhóm. Sau đó, Spark duyệt tuần tự qua dữ liệu đã sắp xếp, cộng dồn giá trị cho một khóa cho đến khi gặp một khóa mới.",
+      "when_to_use": "Được sử dụng khi các khóa gom nhóm quá lớn đối với bảng băm hoặc khi dữ liệu đã được sắp xếp sẵn. Nó chậm hơn HashAggregate nhưng an toàn hơn về mặt bộ nhớ vì không yêu cầu bảng băm truy cập ngẫu nhiên.",
+      "edge_cases": [
+        "Phát sinh thêm chi phí (overhead) sắp xếp nếu dữ liệu chưa được sắp xếp sẵn.",
+        "An toàn khi tràn bộ nhớ (Spill-safe): Sẽ không dễ bị sập vì lỗi OOM như HashAggregate."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Định dạng theo Cột so với theo Hàng (Columnar vs Row Formats)",
+      "subtitle": "Parquet/ORC/Delta so với CSV/JSON",
+      "description": "Các định dạng lưu trữ theo cột lưu dữ liệu theo từng cột thay vì từng hàng. Điều này cực kỳ hiệu quả cho các truy vấn phân tích (OLAP) vì Spark có thể bỏ qua toàn bộ những cột không nằm trong mệnh đề SELECT.",
+      "when_to_use": "Luôn sử dụng Parquet hoặc Delta cho các tác vụ phân tích quy mô lớn. Tránh dùng CSV/JSON cho bất kỳ mục đích nào khác ngoài vùng tiếp nhận dữ liệu thô ban đầu (raw landing zones).",
+      "edge_cases": [
+        "Sự tiến hóa lược đồ (Schema evolution) được xử lý tốt hơn bởi Delta Lake.",
+        "Các định dạng dựa trên hàng (như Avro) phù hợp hơn cho việc ghi thông lượng cao hoặc xử lý luồng (streaming)."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Lọc dữ liệu ngay tại tầng lưu trữ",
+      "description": "Spark đẩy các điều kiện FILTER (mệnh đề WHERE) và SELECT xuống thẳng tầng lưu trữ. Trình đọc tệp (Parquet/Delta) chỉ trả về những hàng và cột khớp với bộ lọc, giúp giảm thiểu đáng kể chi phí I/O.",
+      "when_to_use": "Thiết yếu để đạt hiệu năng cao. Spark thực hiện việc này tự động nếu định dạng lưu trữ hỗ trợ. Hãy đảm bảo bạn phân vùng dữ liệu theo các cột thường xuyên được dùng để lọc.",
+      "edge_cases": [
+        "Pushdown không hoạt động đối với các hàm tự định nghĩa (UDF) hoặc các biểu thức phức tạp.",
+        "Bộ lọc thông thường phải nằm trên một cột ở cấp cao nhất (top-level column)."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() so với persist()",
+      "subtitle": "Quản lý bộ nhớ và Lineage",
+      "description": "cache() là cách viết tắt của persist(MEMORY_AND_DISK). Nó chỉ thị cho Spark lưu trữ DataFrame trong bộ nhớ (và tràn ra đĩa nếu không đủ chỗ) sau khi được tính toán lần đầu tiên.",
+      "when_to_use": "Sử dụng khi cùng một DataFrame được dùng trong nhiều Action nối tiếp nhau. Ví dụ: vừa tính toán bảng tóm tắt vừa lưu trữ dữ liệu đã qua xử lý."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "Cắt ngắn Lineage để đảm bảo an toàn",
+      "description": "Không giống như cache, checkpoint() lưu dữ liệu xuống hệ thống lưu trữ tin cậy (HDFS/S3) và CẮT NGẮN (truncate) hoàn toàn Lineage. Điều này ngăn chuỗi Lineage trở nên quá dài gây ra lỗi StackOverflowError.",
+      "when_to_use": "Sử dụng trong các thuật toán lặp (Machine Learning) hoặc khi Lineage trở nên cực kỳ phức tạp. Nó chậm hơn cache nhưng đáng tin cậy hơn."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Bộ não của Spark hiện đại (3.x+)",
+      "description": "AQE tối ưu hóa lại kế hoạch truy vấn GIỮA các Stage truy vấn. Nó sử dụng các số liệu thống kê thời gian chạy thu thập được từ các Stage đã hoàn thành để cải thiện kế hoạch cho các Stage còn lại.",
+      "when_to_use": "Được bật mặc định từ Spark 3.2+. Hãy luôn giữ nó ở trạng thái bật. Nó giải quyết ba vấn đề chính: Gộp các phân vùng nhỏ (Coalescing partitions), Chuyển đổi chiến lược Join, và Tối ưu hóa Skew Join."
+    },
+    "skew_join_optimization": {
+      "title": "Tối ưu hóa Skew Join (Skew Join Optimization)",
+      "subtitle": "Xử lý sự phân phối dữ liệu không đồng đều",
+      "description": "Data Skew xảy ra khi một phân vùng có lượng dữ liệu nhiều hơn hẳn các phân vùng khác, khiến một tác vụ tốn thời gian gấp 10 lần bình thường. AQE phát hiện điều này và tự động chia phân vùng bị lệch thành các phân vùng con nhỏ hơn.",
+      "when_to_use": "Khi bạn thấy các \"tác vụ chạy chậm\" (straggler tasks) trên giao diện Spark UI. AQE tự động xử lý vấn đề này bằng cách tìm kiếm các phân vùng có kích thước lớn hơn nhiều so với mức trung bình."
+    },
+    "cluster_managers": {
+      "title": "Trình quản lý cụm (YARN so với K8s)",
+      "subtitle": "Các chiến lược điều phối tài nguyên",
+      "description": "Spark có thể chạy trên nhiều trình quản lý cụm khác nhau. YARN là trình quản lý truyền thống của hệ sinh thái Hadoop, trong khi Kubernetes (K8s) là phương pháp tiếp cận cloud-native hiện đại.",
+      "when_to_use": "Sử dụng YARN cho các cụm Hadoop truyền thống tại chỗ (on-prem). Sử dụng K8s cho các môi trường đám mây hiện đại, chạy bằng container đòi hỏi khả năng cô lập tốt hơn và tự động co giãn (autoscaling)."
+    },
+    "deployment_modes": {
+      "title": "Client Mode so với Cluster Mode",
+      "subtitle": "Driver nằm ở đâu?",
+      "description": "Ở Client Mode, tiến trình Driver chạy ngay trên máy mà bạn dùng để gửi lệnh (submit). Ở Cluster Mode, Driver chạy bên trong cụm máy chủ (trên một worker node).",
+      "when_to_use": "Sử dụng Client Mode khi gỡ lỗi tương tác hoặc làm việc trên Notebook. Sử dụng Cluster Mode cho các công việc trên môi trường Production để tránh độ trễ mạng và ngăn ngừa lỗi sập Driver nếu máy cá nhân của bạn bị mất kết nối."
+    },
+    "memory_regions": {
+      "title": "Bộ nhớ Execution so với Storage",
+      "subtitle": "Ranh giới linh hoạt (Dynamic boundary)",
+      "description": "Bộ nhớ Execution dùng cho các phép Shuffle/Join. Bộ nhớ Storage dùng cho việc Caching. Chúng dùng chung một vùng nhớ; nếu một bên đang rảnh, bên kia có thể mượn để sử dụng.",
+      "when_to_use": "Điều chỉnh spark.memory.fraction (mặc định 0.6) và spark.memory.storageFraction (mặc định 0.5) nếu ứng dụng của bạn sử dụng Caching nhiều hoặc có các phép Shuffle khổng lồ."
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Dữ liệu đến muộn (Late Data)",
+      "subtitle": "Giới hạn mức sử dụng bộ nhớ trong các luồng có trạng thái (stateful streams)",
+      "description": "Watermark là một ngưỡng thời gian trượt phía sau. Nếu thời gian sự kiện lớn nhất từng ghi nhận là T, và ngưỡng Watermark là W, bất kỳ dữ liệu nào đến có thời gian sự kiện cũ hơn (T - W) sẽ bị loại bỏ. Điều này cho phép Spark dọn dẹp trạng thái cũ khỏi bộ nhớ.",
+      "when_to_use": "Bắt buộc phải dùng bất cứ khi nào bạn thực hiện tổng hợp (aggregation) hoặc Join theo thời gian sự kiện trong Structured Streaming. Nếu không có nó, trạng thái sẽ phình to vô hạn dẫn đến lỗi tràn bộ nhớ (OOM)."
+    },
+    "output_modes": {
+      "title": "Các chế độ đầu ra Streaming (Streaming Output Modes)",
+      "subtitle": "Cách Spark ghi kết quả của luồng dữ liệu",
+      "description": "1. Append: Chỉ ghi các hàng MỚI sẽ không bao giờ thay đổi nữa (yêu cầu phải có Watermark nếu dùng với phép tổng hợp).\n2. Update: Chỉ ghi những hàng vừa được cập nhật trong lần kích hoạt (trigger) gần nhất.\n3. Complete: Ghi lại TOÀN BỘ bảng kết quả sau mỗi lần kích hoạt.",
+      "when_to_use": "Dùng Append khi lưu vào nhật ký (logs). Dùng Update khi ghi vào cơ sở dữ liệu. Dùng Complete cho các bảng tham chiếu nhỏ hoặc bảng đếm tổng số lượng."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore so với Unity Catalog",
+      "subtitle": "Tập trung hóa các bảng và siêu dữ liệu (metadata)",
+      "description": "Một Catalog hoặc Metastore đóng vai trò như danh bạ trung tâm cho mọi tập dữ liệu của bạn. Nó ánh xạ tên bảng (ví dụ: \"sales.customers\") tới các tệp vật lý (ví dụ: \"s3://bucket/path/parquet/\"). Hive Metastore (HMS) là tiêu chuẩn mã nguồn mở truyền thống. Unity Catalog là tiêu chuẩn doanh nghiệp hiện đại cho kiến trúc Lakehouse.",
+      "when_to_use": "Luôn sử dụng Catalog trên môi trường Production. Đừng bao giờ chỉ dựa vào đường dẫn tệp cứng trong mã nguồn. Nó giúp tách biệt lớp lưu trữ vật lý khỏi bảng logic, cho phép di chuyển hệ thống liền mạch."
+    },
+    "acls_fgac": {
+      "title": "Kiểm soát truy cập chi tiết (Fine-Grained Access Control - FGAC)",
+      "subtitle": "Bảo mật ở cấp độ Hàng và Cột",
+      "description": "Bảo mật ở cấp độ lưu trữ (các IAM role) chỉ bảo vệ được các thư mục (cấp độ bucket). Các catalog hiện đại như Unity Catalog hoặc AWS Lake Formation cho phép bạn viết các câu lệnh SQL GRANT để giới hạn quyền truy cập tới từng hàng cụ thể (ví dụ: chỉ người dùng ở \"UK\" mới thấy các hàng của UK) hoặc từng cột (che giấu số căn cước/SSN).",
+      "when_to_use": "Bắt buộc khi xử lý dữ liệu cá nhân nhạy cảm (PII), tuân thủ quy định GDPR và xây dựng các nền tảng dữ liệu đa người thuê (multi-tenant)."
+    },
+    "explode_vs_hof": {
+      "title": "Explode so với Higher-Order Functions",
+      "subtitle": "Quản lý các cột kiểu Mảng (Array)",
+      "description": "Các mảng có thể được tách phẳng thành nhiều hàng bằng hàm explode(), làm nhân bội kích thước tập dữ liệu. Ngược lại, các Hàm bậc cao (Higher-Order Functions như transform, filter) cho phép thực hiện các phép toán map/reduce trực tiếp bên trong mảng mà không làm tăng số lượng hàng.",
+      "when_to_use": "Sử dụng explode() nếu bạn cần group/join theo từng phần tử riêng lẻ trong mảng. Sử dụng transform() nếu bạn chỉ cần biến đổi giá trị bên trong mảng (ví dụ: nhân tất cả các khoản thuế với 1.2) trong khi vẫn giữ nguyên số lượng hàng ban đầu."
+    },
+    "json_parsing": {
+      "title": "Phân tích cú pháp JSON: Structs so với Strings",
+      "subtitle": "from_json so với get_json_object",
+      "description": "Khi xử lý một cột văn bản chứa JSON, bạn có thể trích xuất một đường dẫn đơn lẻ dưới dạng chuỗi (get_json_object) hoặc ép kiểu toàn bộ chuỗi JSON thành kiểu StructType gốc của Spark bằng một lược đồ xác định (from_json).",
+      "when_to_use": "Hãy sử dụng from_json() kèm lược đồ (schema) bất cứ khi nào có thể. Nó chỉ phân tích cú pháp chuỗi JSON một lần duy nhất và lưu vào các cột có kiểu dữ liệu rõ ràng, nhanh hơn rất nhiều so với việc gọi get_json_object() nhiều lần trên cùng một hàng."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Xử lý các tác vụ chạy chậm (Stragglers)",
+      "description": "Nếu một nút mạng (node) trong cụm của bạn gặp trục trặc (ổ cứng sắp hỏng, lỗi mạng), một tác vụ đơn lẻ có thể mất thời gian lâu gấp 10 lần so với phần còn lại (gọi là straggler). Speculative Execution sẽ phát hiện điều này và khởi chạy một tác vụ bản sao trên một nút khỏe mạnh khác. Tác vụ nào hoàn thành trước sẽ được lấy kết quả.",
+      "when_to_use": "Hãy bật tính năng này (spark.speculation=true) trong các môi trường đám mây không ổn định hoặc các cụm máy chủ không đồng nhất. Hãy cẩn thận nếu tác vụ của bạn ghi dữ liệu ra cơ sở dữ liệu bên ngoài (bắt buộc phải đảm bảo tính lũy đẳng - idempotency!)."
+    },
+    "broadcast_hints": {
+      "title": "Join Hints",
+      "subtitle": "Ghi đè quyết định của Catalyst Optimizer",
+      "description": "Đôi khi Spark thiếu số liệu thống kê chính xác (ví dụ: khi đọc từ một hồ dữ liệu lộn xộn) và không nhận ra rằng một bảng đủ nhỏ để thực hiện Broadcast. Một Broadcast Hint sẽ buộc Spark phải sử dụng chiến lược BroadcastHashJoin.",
+      "when_to_use": "Khi bạn phát hiện một phép SortMergeJoin chạy chậm trên giao diện UI và bạn BIẾT CHẮC rằng một bên bảng hoàn toàn vừa vặn trong bộ nhớ của Executor (thường < 1GB, mặc dù ngưỡng mặc định là 10MB)."
+    },
+    "max_partition_bytes": {
+      "title": "Tệp tin & maxPartitionBytes",
+      "subtitle": "Tinh chỉnh các phân vùng khi Đọc (Read Partitions)",
+      "description": "Khi đọc hàng trăm tệp CSV/JSON nhỏ li ti, Spark sẽ ánh xạ 1 tệp thành 1 phân vùng, gây ra chi phí quản lý (overhead) lớn. Bạn có thể sử dụng spark.sql.files.maxPartitionBytes (mặc định 128MB) để đóng gói nhiều tệp nhỏ vào chung một phân vùng duy nhất ngay tại thời điểm ĐỌC.",
+      "when_to_use": "Nếu Stage đọc dữ liệu của bạn có hàng nghìn tác vụ mà mỗi tác vụ chỉ mất 10ms, bạn đang gặp phải 'hội chứng tệp nhỏ' (tiny-file syndrome). Hãy tăng giá trị maxPartitionBytes hoặc sử dụng kỹ thuật gom tệp."
+    }
+  }
+}

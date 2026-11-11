@@ -5,8 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "npm run validate && tsc && vite build",
+    "preview": "vite preview",
+    "validate": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"types\":[\"node\"]}' scripts/index.ts",
+    "i18n:check": "npm run validate"
   },
   "keywords": [],
   "author": "",

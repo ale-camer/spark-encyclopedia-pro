@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Join Türleri",
+      "description": "PySpark'ta bulunan tüm birleştirme (Join) stratejileri. Her türün davranışını, satır seçme mantığını ve fiziksel yürütülmesini anlamak, doğru ve yüksek performanslı veri hatları için kritiktir."
+    },
+    "window_functions": {
+      "title": "Pencere Fonksiyonları (Window Functions)",
+      "description": "Mevcut satırla ilişkili bir satır kümesi üzerinde değerler hesaplayan gelişmiş analitik işlemler. Sıralama (ranking), kaydırma (offsets) ve hareketli toplulaştırmaları içerir."
+    },
+    "aggregations": {
+      "title": "Toplulaştırmalar (Aggregations)",
+      "description": "Spark'ın gruplar genelinde özet istatistikleri nasıl hesapladığı. Hash ve Sort Aggregate farkını ve gruplamanın Shuffle üzerindeki etkisini anlamak büyük ölçekli veriler için anahtardır."
+    },
+    "storage_and_pushdown": {
+      "title": "Depolama ve Pushdown",
+      "description": "Disk üzerindeki veri yerleşiminin Spark performansını nasıl etkilediği. Optimize edilmiş formatlar (Parquet/Delta), Spark'ın yalnızca ihtiyaç duyduğu verileri okumasına olanak tanır."
+    },
+    "persistence_and_caching": {
+      "title": "Kalıcılık ve Önbellekleme (Persistence & Caching)",
+      "description": "Tüm soy ağacını (lineage) yeniden hesaplamadan ara DataFrame'lerin nasıl yeniden kullanılacağı. Yinelemeli algoritmalar ve çoklu Action işlemleri için kritiktir."
+    },
+    "aqe_optimizations": {
+      "title": "Temel Optimizasyon ve AQE",
+      "description": "Spark'ın gerçek veri istatistiklerine dayanarak yürütme planını çalışma zamanında nasıl uyarladığı. Adaptive Query Execution (AQE), Modern Spark'taki en büyük performans artışıdır."
+    },
+    "infrastructure": {
+      "title": "Altyapı ve Dağıtım",
+      "description": "Spark'ın küme yöneticilerine (Cluster Managers) nasıl bağlandığı ve uygulama yaşam döngüsünü nasıl yönettiği. Bu, her Spark işinin temelidir."
+    },
+    "memory_management": {
+      "title": "Unified Memory Management",
+      "description": "Spark'ın yürütücü (executor) RAM'ini hesaplama (Execution) ve önbellek (Storage) arasında nasıl böldüğü. Spark 3.x birleşik bir yaklaşım kullanır."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Veri akışlarını güvenilir bir şekilde işlemek, durumu (state) yönetmek ve sırasız veya geç gelen kayıtlarla başa çıkmak için gelişmiş kavramlar."
+    },
+    "data_governance": {
+      "title": "Veri Yönetişimi ve Güvenlik (Data Governance)",
+      "description": "Veri keşfi, şema zorlaması ve hassas erişim kontrolü sağlamak için Spark'ın Kataloglarla (Catalogs) nasıl entegre olduğu."
+    },
+    "complex_types": {
+      "title": "Karmaşık Veri Tipleri",
+      "description": "Arrays, Structs, Maps ve ham JSON metinleri gibi skaler olmayan verilerle çalışmak. Modern API ve NoSQL veri kaynakları için vazgeçilmezdir."
+    },
+    "execution_internals": {
+      "title": "Yürütme ve Shuffle İç Yapısı",
+      "description": "Spark Yürütme Motorunun kaputunun altı. Tungsten, bellek yönetimi ve görev spekülasyonunu (Speculative Execution) anlamak."
+    },
+    "optimizations_extra": {
+      "title": "Gelişmiş Optimizasyon Ayarları",
+      "description": "AQE gibi otomatik mekanizmalar yeterli olmadığında veya istatistikler eksik olduğunda Spark'a ince ayar yapmak için kullanılan manuel kontroller."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Yalnızca her iki tarafta eşleşen satırları döndürür",
+      "description": "En yaygın Join türüdür. Birleştirme anahtarının HER İKİ DataFrame'de de bulunduğu satırları döndürür. Diğer tarafta eşleşmesi olmayan her iki taraftaki satırlar tamamen hariç tutulur. SQL'de: klasik JOIN veya INNER JOIN.",
+      "when_to_use": "Yalnızca karşılık gelen bir eşleşmesi olan kayıtlarla ilgilendiğinizde kullanın. Örnek: eşleşen bir müşterisi olan siparişler, eşleşen bir ürünü olan işlemler. Bir kaydın eşleşmesi yoksa onu istemezsiniz.",
+      "edge_cases": [
+        "NULL anahtarlar asla eşleşmez — birleştirme anahtarında NULL olan satırlar, her iki tarafta da NULL olsa bile sonuçtan hariç tutulur.",
+        "Sağ taraftaki yinelenen (duplicate) anahtarlar, bu anahtarlar için bir Kartezyen çarpım (Cartesian product) oluşturur.",
+        "Birden fazla sütunda Inner Join: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Soldaki tüm satırlar, sağdaki eşleşen satırlar",
+      "description": "Soldaki DataFrame'den TÜM satırları ve bir eşleşme varsa sağdaki eşleşen satırı döndürür. Sağda eşleşme olmadığında sağ tarafın sütunları NULL ile doldurulur. SQL'de LEFT JOIN olarak da adlandırılır.",
+      "when_to_use": "Sol DataFrame sizin 'doğruluk kaynağınız' (source of truth) olduğunda ve onu sağdaki isteğe bağlı verilerle zenginleştirmek istediğinizde kullanın. Örnek: tüm müşterileri ve (varsa) son siparişlerini getirin. Siparişi olmayan müşteriler yine de görünür.",
+      "edge_cases": [
+        "Sağ tarafta eşleşmesi OLMAYAN kayıtları bulmak için: Join sonrasında sağ taraf sütununun NULL olduğu yerleri filtreleyin.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — eşleşmeyen sol satırları bulur.",
+        "Sağ tarafta yinelenen anahtarlar varsa eşleşen sol satırlar çoğaltılır."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Sağdaki tüm satırlar, soldaki eşleşen satırlar",
+      "description": "Left Outer Join'in aynadaki yansımasıdır. Sağdaki DataFrame'den TÜM satırları döndürür; eşleşmeyen sol sütunlar için NULL kullanılır. LEFT'ten daha az yaygındır — genellikle DataFrame'lerin yerini değiştirip daha sezgisel olan LEFT kullanabilirsiniz.",
+      "when_to_use": "Sağ DataFrame yetkili kaynak olduğunda kullanın. Pratikte DataFrame'lerin yerini değiştirmek ve Left Join kullanmak genellikle daha temiz ve anlaşılması daha kolaydır.",
+      "edge_cases": [
+        "Eşdeğeri: users.join(orders, 'user_id', 'left') — Right Join nadiren gereklidir.",
+        "Eşleşmeyen sağ satırlar için SOL taraf sütunlarında NULL dolgusu yapılır."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Her iki taraftaki tüm satırlar, eşleşme olmayan yerlerde NULL",
+      "description": "HER İKİ DataFrame'den de TÜM satırları döndürür. Eşleşmesi olan satırlar birleştirilir. Diğer tarafta eşleşmesi olmayan satırlarda eksik sütunlar NULL ile doldurulur. SQL'de FULL JOIN veya FULL OUTER JOIN olarak da adlandırılır.",
+      "when_to_use": "Veri mutabakatı (reconciliation) için kullanın: birinde olup diğerinde olmayanı veya her ikisinde de olanı bulmak için iki kaynağı karşılaştırmak. Değişiklik tespiti (SCD Type 2) için ETL hatlarında yaygındır.",
+      "edge_cases": [
+        "Full Outer Join maliyetlidir — Broadcast Join stratejisini kullanamaz. Her zaman tam bir Shuffle ile sonuçlanır.",
+        "YALNIZCA A'da bulunan satırları bulmak için: result.filter(result['name_b'].isNull())",
+        "YALNIZCA B'de bulunan satırları bulmak için: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Kartezyen Çarpım)",
+      "subtitle": "Soldaki her satır sağdaki her satırla eşleştirilir",
+      "description": "Kartezyen çarpımı (Cartesian product) döndürür: sol DataFrame'in her satırı sağ DataFrame'in HER satırıyla eşleştirilir. Solda M satır ve sağda N satır varsa sonuçta M×N satır olur. Birleştirme anahtarı gerekmez. Son derece maliyetlidir — dikkatli kullanın.",
+      "when_to_use": "İki küçük DataFrame'in tüm kombinasyonlarını üretmek için kullanın. Yaygın kullanım: bir raporlama iskeleti için tüm tarih-ürün kombinasyonlarını oluşturmak veya her kaydı diğerleriyle karşılaştırmak. YALNIZCA küçük veri kümelerinde kullanın.",
+      "edge_cases": [
+        "Sol=1M satır ve sağ=1M satır ise → sonuç = 1 TRİLYON satır. Her zaman önce boyutları kontrol edin.",
+        "Spark, güvenlik önlemi olarak örtük (implicit) Cross Join'ler için spark.sql.crossJoin.enabled=true ayarını gerektirir.",
+        "Performans: BroadcastNestedLoopJoin veya CartesianProduct fiziksel operatörünü kullanır — hash tablosu yoktur."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Sağda eşleşmesi olan sol satırları döndürür — sağ sütunlar hariç tutulur",
+      "description": "Sağ tarafta bir eşleşmenin bulunduğu SOL DataFrame satırlarını döndürür, ANCAK sağ taraftan hiçbir sütun içermez. INNER JOIN gibidir ancak yalnızca sol sütunları alırsınız. Başka bir veri kümesine dayalı filtre olarak kullanışlıdır.",
+      "when_to_use": "Varlık filtresi olarak kullanın: 'Birden fazla siparişi olan müşteriler için müşteri satırlarını çoğaltmadan, en az bir sipariş vermiş tüm müşterileri bana ver'. Sağ taraf sütunlarına ihtiyacınız olmadığında Inner Join'den daha verimlidir.",
+      "edge_cases": [
+        "Sonuç şeması yalnızca SOL DataFrame sütunlarını içerir — hiçbir sağ sütun görünmez.",
+        "Sağ taraftaki çoklu eşleşmeler sol satırları ÇOĞALTMAZ (Inner Join'in aksine).",
+        "Eşdeğer SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Sağda eşleşmesi OLMAYAN sol satırları döndürür",
+      "description": "Left Semi Join'in tam tersidir. Sağ tarafta HİÇBİR eşleşmenin bulunmadığı SOL DataFrame satırlarını döndürür. Eksik veya sahipsiz (orphaned) kayıtları bulmak için mükemmeldir. Sütunlar yalnızca sol DataFrame'den gelir.",
+      "when_to_use": "Başka bir tabloda BULUNMAYAN kayıtları bulmak için kullanın. Örnek: hiç sipariş vermemiş müşteriler, satışı olmayan ürünler, bu ay giriş yapmamış kullanıcılar. Veri bütünlüğünü doğrulamak için de yararlıdır.",
+      "edge_cases": [
+        "NULL birleştirme anahtarına sahip satırlar: NULL != NULL olduğundan soldaki NULL anahtarlar Anti Join sonuçlarında her zaman görünür.",
+        "Eşdeğer SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Şuna göre daha verimli bir alternatiftir: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Bir DataFrame'i kendisiyle birleştirme",
+      "description": "Self Join, bir DataFrame'i kendisinin bir kopyasıyla birleştirdiğiniz zamandır. Hiyerarşik ilişkiler veya aynı veri kümesi içindeki satırları karşılaştırmak için kullanılır. İki tarafı ayırt etmek için takma ad (alias) gerektirir.",
+      "when_to_use": "Şunlar için kullanın: aynı tablodaki yönetici-çalışan ilişkilerini bulmak, her satırı diğer satırlarla karşılaştırmak (ör. yinelenen işlemleri bulmak) veya tek bir tabloda saklanan ağaç/graf yapılarını dolaşmak.",
+      "edge_cases": [
+        "Self Join'in her iki tarafına da her zaman takma ad (alias) verin — alias olmadan Spark sütun belirsizliğini çözemez.",
+        "Derin hiyerarşiler (2 seviyeden fazla) için soy ağacı (lineage) patlamasını önlemek adına GraphX veya .checkpoint() ile yinelemeli Join'ler kullanın.",
+        "Inner ile yapılan Self Join N² kombinasyon oluşturur — dikkatlice filtreleyin."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Sıralama: row_number vs rank vs dense_rank",
+      "subtitle": "Yinelenenleri ve numaralandırma protokollerini yönetme",
+      "description": "Bu fonksiyonlar bir pencere bölümü (window partition) içindeki her satıra sıralı bir numara atar. Temel fark, beraberlikleri (orderBy ifadesinde aynı değerlere sahip satırları) nasıl ele aldıklarıdır.",
+      "when_to_use": "Benzersiz tanımlayıcılar için row_number, yarışma tarzı beraberlikler (numara atlayarak) için rank ve ardışık beraberlikler (boşluk bırakmadan) için dense_rank kullanın.",
+      "edge_cases": [
+        "Hiçbir orderBy belirtilmezse row_number deterministik olmayabilir.",
+        "Yüksek kardinaliteli sütunlara göre bölümleme (partitioning) bellek baskısına neden olabilir."
+      ]
+    },
+    "offset_functions": {
+      "title": "Kaydırma (Offset): lag vs lead",
+      "subtitle": "Önceki veya sonraki kayıtlara erişim",
+      "description": "Lag ve Lead, Self Join yapmadan diğer satırlardaki (önceki veya sonraki) verilere erişmenizi sağlar. Lag N satır geriye bakar, Lead ise N satır ileriye bakar.",
+      "when_to_use": "Zaman serisi analizleri için mükemmeldir: aydan aya büyümeyi hesaplamak, durum değişikliklerini tespit etmek veya olaylar arasındaki zaman farkını bulmak.",
+      "edge_cases": [
+        "İlk/son satırda NULL değerlerden kaçınmak için varsayılan (default) değerler önemlidir.",
+        "Kararlı lag/lead sonuçları için sıralama (ordering) kesin olmalıdır."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "Varsayılan ve en hızlı toplulaştırma yöntemi",
+      "description": "Spark bellekte anahtarların gruplama sütunları, değerlerin ise çalışan toplulaştırmalar olduğu bir hash haritası (hash map) oluşturur. İki aşamada çalışır: kısmi toplulaştırma (yürütücülerde) ve nihai toplulaştırma (Shuffle sonrasında).",
+      "when_to_use": "Çoğu groupBy işlemi için varsayılan tercihtir. Bir bölüm (partition) için benzersiz gruplar yürütücü bellek yığınına (heap) sığdığı sürece son derece hızlıdır.",
+      "edge_cases": [
+        "Bellek baskısı: Çok fazla benzersiz anahtar varsa Spark diske taşabilir (spill) veya SortAggregate'e geri dönebilir (fallback).",
+        "Yüksek kardinaliteli gruplar: Çarpık (skewed) Shuffle işlemlerine yol açabilir."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "Devasa gruplar için diske taşmaya dayanıklı (spill-safe) yedek yöntem",
+      "description": "Verilerin gruplama anahtarlarına göre sıralanmasını gerektirir. Spark daha sonra sıralanmış veriler üzerinde ilerleyerek yeni bir anahtar görene kadar mevcut anahtar için değerleri biriktirir.",
+      "when_to_use": "Gruplama anahtarları bir hash haritası için çok büyük olduğunda veya veriler zaten sıralı olduğunda kullanılır. HashAggregate'ten daha yavaştır ancak rastgele erişimli bir hash haritası gerektirmediği için belleğe karşı daha dayanıklıdır.",
+      "edge_cases": [
+        "Veriler zaten sıralı değilse ek sıralama maliyeti getirir.",
+        "Spill-safe: HashAggregate kadar kolay OOM (bellek yetersizliği) hatasıyla çökmez."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Sütunsal (Columnar) vs Satır (Row) Formatları",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "Sütunsal formatlar verileri satır yerine sütuna göre depolar. Bu, analitik sorgular (OLAP) için oldukça verimlidir çünkü Spark, SELECT ifadesinde yer almayan sütunların tamamını okumadan atlayabilir.",
+      "when_to_use": "Büyük ölçekli analitik iş yükleri için her zaman Parquet veya Delta kullanın. Ham veri iniş bölgeleri (landing zones) dışındaki hiçbir şey için CSV/JSON kullanmaktan kaçının.",
+      "edge_cases": [
+        "Şema evrimi (Schema evolution) Delta Lake tarafından daha iyi yönetilir.",
+        "Satır tabanlı formatlar (Avro) yüksek hacimli yazma/akış (streaming) işlemleri için daha iyidir."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Verileri depolama katmanında filtreleme",
+      "description": "Spark, FILTER (WHERE ifadesi) ve SELECT işlemlerini depolama katmanına indirger. Okuyucu (Parquet/Delta) yalnızca filtreyle eşleşen satırları ve sütunları döndürerek G/Ç (I/O) maliyetini büyük ölçüde azaltır.",
+      "when_to_use": "Performans için vazgeçilmezdir. Format destekliyorsa Spark bunu otomatik olarak yapar. Verilerinizi sık filtrelediğiniz sütunlara göre bölümlediğinizden (partition) emin olun.",
+      "edge_cases": [
+        "Pushdown, UDF'ler veya karmaşık ifadeler için çalışmaz.",
+        "Filtre genellikle üst düzey bir sütun üzerinde olmalıdır."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "Bellek ve soy ağacı (lineage) yönetimi",
+      "description": "cache(), persist(MEMORY_AND_DISK) için bir kısayoldur. Spark'a DataFrame'i ilk kez hesaplandıktan sonra bellekte (ve sığmazsa diskte) saklamasını söyler.",
+      "when_to_use": "Aynı DataFrame sonraki birden fazla Action işleminde kullanıldığında tercih edin. Örnek: bir özet hesaplamak ve ardından ham verileri kaydetmek."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "Güvenlik için soy ağacını (lineage) kesme",
+      "description": "Cache'in aksine checkpoint(), verileri güvenilir bir depolamaya (HDFS/S3) kaydeder ve soy ağacını KESER (truncate). Bu, lineage zincirlerinin çok uzamasını ve StackOverflowError hatalarına neden olmasını önler.",
+      "when_to_use": "Yinelemeli algoritmalarda (Makine Öğrenimi) veya soy ağacının aşırı karmaşık olduğu durumlarda kullanın. Cache'ten daha yavaştır ancak daha güvenilirdir."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Modern Spark'ın (3.x+) beyni",
+      "description": "AQE, sorgu aşamaları (query stages) ARASINDA sorgu planını yeniden optimize eder. Kalan aşamaların planını iyileştirmek için tamamlanan aşamalardan alınan çalışma zamanı istatistiklerini kullanır.",
+      "when_to_use": "Spark 3.2+ sürümlerinde varsayılan olarak etkindir. Her zaman açık tutun. Üç ana sorunu çözer: Bölümleri birleştirme (Coalescing partitions), Join stratejilerini değiştirme ve Skew Join'leri optimize etme."
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join Optimizasyonu",
+      "subtitle": "Dengesiz veri dağılımlarını yönetme",
+      "description": "Data skew (veri çarpıklığı), bir bölümün diğerlerinden çok daha fazla veriye sahip olması ve bir görevin 10 kat daha uzun sürmesi durumunda ortaya çıkar. AQE bunu tespit eder ve çarpık bölümü daha küçük alt bölümlere böler.",
+      "when_to_use": "Spark UI'da \"geride kalan görevler\" (straggler tasks) gördüğünüzde. AQE, ortalamadan çok daha büyük bölümleri arayarak bunu otomatik olarak halleder."
+    },
+    "cluster_managers": {
+      "title": "Küme Yöneticileri (YARN vs K8s)",
+      "subtitle": "Kaynak orkestrasyon stratejileri",
+      "description": "Spark çeşitli küme yöneticileri üzerinde çalışabilir. YARN geleneksel Hadoop yöneticisiyken, Kubernetes (K8s) modern bulut-yerel (cloud-native) yaklaşımdır.",
+      "when_to_use": "Eski şirket içi (on-prem) Hadoop kümeleri için YARN kullanın. Daha iyi izolasyon ve otomatik ölçeklendirme gerektiren bulut-yerel, konteynerize ortamlar için K8s kullanın."
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Modu",
+      "subtitle": "Driver nerede yaşıyor?",
+      "description": "Client Modunda, Driver işi gönderdiğiniz makinede çalışır. Cluster Modunda ise Driver kümenin içinde (bir worker düğümünde) çalışır.",
+      "when_to_use": "Etkileşimli hata ayıklama/notebook'lar için Client Modunu kullanın. Ağ gecikmesini ve yerel makinenizin bağlantısı kesilirse Driver çökmesini önlemek için üretim (production) işlerinde Cluster Modunu kullanın."
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Belleği",
+      "subtitle": "Dinamik bellek sınırı",
+      "description": "Execution Belleği Shuffle ve Join işlemleri içindir. Storage Belleği ise önbellekleme (caching) içindir. Aynı havuzu paylaşırlar; biri boşsa diğeri ondan ödünç alabilir.",
+      "when_to_use": "Yoğun önbellekleme veya devasa Shuffle işlemleriniz varsa spark.memory.fraction (varsayılan 0.6) ve spark.memory.storageFraction (varsayılan 0.5) ayarlarını düzenleyin."
+    },
+    "watermarking_logic": {
+      "title": "Watermark'lar ve Geç Gelen Veriler",
+      "subtitle": "Durumlu (stateful) akışlarda bellek kullanımını sınırlama",
+      "description": "Watermark, geriden gelen bir zaman eşiğidir. Görülen maksimum olay zamanı T ve watermark W ise, (T - W) değerinden daha eski bir olay zamanıyla gelen tüm veriler atılır. Bu, Spark'ın eski durumu bellekten temizlemesine olanak tanır.",
+      "when_to_use": "Structured Streaming'de olay zamanı (event time) üzerinden toplulaştırma veya Join kullandığınız her an zorunludur. Onsuz durum (state) sonsuza kadar büyür ve OOM hatasına yol açar."
+    },
+    "output_modes": {
+      "title": "Streaming Çıktı Modları (Output Modes)",
+      "subtitle": "Spark akış sonuçlarını nasıl yazar?",
+      "description": "1. Append: Yalnızca bir daha asla değişmeyecek YENİ satırları yazar (toplulaştırmalar için Watermark gerektirir).\n2. Update: Yalnızca son tetikleyicide (trigger) güncellenen satırları yazar.\n3. Complete: Her tetikleyicide TÜM sonuç tablosunu yazar.",
+      "when_to_use": "Loglara kaydetmek için Append. Bir veritabanına yazmak için Update. Çok küçük referans tabloları veya toplam sayımlar için Complete."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "Tabloları ve metaverileri merkezileştirme",
+      "description": "Bir Katalog veya Metastore, tüm veri kümelerinizin merkezi dizini olarak görev yapar. Tablo adlarını (ör. \"sales.customers\") fiziksel dosyalara (ör. \"s3://bucket/path/parquet/\") eşler. Hive Metastore (HMS) eski açık kaynak standardıdır. Unity Catalog ise Lakehouse'lar için modern kurumsal standarttır.",
+      "when_to_use": "Üretim ortamında her zaman bir Katalog kullanın. Kod içinde asla yalnızca dosya yollarına güvenmeyin. Fiziksel depolamayı mantıksal tablodan ayırarak sorunsuz geçişlere (migration) olanak tanır."
+    },
+    "acls_fgac": {
+      "title": "Hassas Erişim Kontrolü (FGAC)",
+      "subtitle": "Satır ve Sütun Düzeyinde Güvenlik",
+      "description": "Depolama düzeyinde güvenlik (IAM rolleri) yalnızca dizinleri (bucket düzeyinde) korur. Unity Catalog veya AWS Lake Formation gibi modern kataloglar, belirli satırlara (ör. yalnızca \"UK\" içindeki kullanıcılar UK satırlarını görebilir) veya sütunlara (TCKN/SSN maskeleme) erişimi kısıtlamak için SQL GRANT ifadeleri yazmanıza olanak tanır.",
+      "when_to_use": "Kişisel Verileri (PII) işlemek, GDPR/KVKK uyumluluğu ve çok kiracılı (multi-tenant) veri platformları için gereklidir."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Yüksek Mertebeden Fonksiyonlar (Higher-Order Functions)",
+      "subtitle": "Array sütunlarını yönetme",
+      "description": "Diziler (Arrays), veri kümesi boyutunu katlayan explode() kullanılarak birden fazla satıra açılabilir. Alternatif olarak, Yüksek Mertebeden Fonksiyonlar (transform, filter gibi) satır eklemeden doğrudan dizi içinde map/reduce işlemlerine olanak tanır.",
+      "when_to_use": "Tekil dizi öğelerine göre gruplama/Join yapmanız gerekiyorsa explode() kullanın. Orijinal satır sayısını korurken yalnızca diziyi değiştirmeniz gerekiyorsa (ör. tüm vergileri 1.2 ile çarpmak) transform() kullanın."
+    },
+    "json_parsing": {
+      "title": "JSON Ayrıştırma: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "Bir JSON metin sütunuyla uğraşırken, ya tek bir yolu metin olarak çıkarabilir (get_json_object) ya da bir şema kullanarak tüm JSON metnini yerel bir Spark StructType yapısına dönüştürebilirsiniz (from_json).",
+      "when_to_use": "Mümkün olduğunda her zaman tanımlanmış bir şema ile from_json() kullanın. JSON'u bir kez ayrıştırır ve tipli sütunlarda saklar; bu, aynı satırda birden fazla kez get_json_object() çağırmaktan çok daha hızlıdır."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Geride Kalan Görevlerle (Stragglers) Başa Çıkma",
+      "description": "Kümenizdeki bir düğüm zorlanıyorsa (arızalı disk, ağ sorunu), tek bir görev diğerlerinden 10 kat daha uzun sürebilir (straggler). Speculative execution bunu fark eder ve sağlıklı bir düğümde kopya bir görev başlatır. İlk bitiren kazanır.",
+      "when_to_use": "Güvenilmez bulut ortamlarında veya heterojen kümelerde açın (spark.speculation=true). Görevleriniz harici bir veritabanına yazıyorsa dikkatli olun (idempotency / eşkuvvetlilik gereklidir!)."
+    },
+    "broadcast_hints": {
+      "title": "Join İpuçları (Join Hints)",
+      "subtitle": "Catalyst Optimizer'ı Geçersiz Kılma",
+      "description": "Bazen Spark doğru istatistiklerden yoksundur (ör. dağınık bir veri gölünden okurken) ve bir tablonun Broadcast yapılacak kadar küçük olduğunu fark edemez. Bir Broadcast Hint, Spark'ı BroadcastHashJoin kullanmaya zorlar.",
+      "when_to_use": "UI'da yavaş bir SortMergeJoin tespit ettiğinizde ve bir tarafın yürütücü belleğine kolayca sığdığını BİLDİĞİNİZDE (varsayılan eşik 10MB olsa da tipik olarak < 1GB)."
+    },
+    "max_partition_bytes": {
+      "title": "Dosyalar ve maxPartitionBytes",
+      "subtitle": "Okuma Bölümlerini (Read Partitions) Ayarlama",
+      "description": "Yüzlerce küçük CSV/JSON dosyasını okurken Spark 1 dosyayı 1 bölüme eşleyerek ek yüke (overhead) neden olur. OKUMA zamanında birden fazla küçük dosyayı tek bir bölümde paketlemek için spark.sql.files.maxPartitionBytes (varsayılan 128MB) kullanabilirsiniz.",
+      "when_to_use": "Okuma aşamanızda her biri 10ms süren binlerce görev varsa küçük dosya sendromundan (tiny-file syndrome) muzdaripsiniz demektir. maxPartitionBytes değerini artırın veya dosya paketleme kullanın."
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Joinの種類 (Join Types)",
+      "description": "PySparkで利用可能なすべてのJoin戦略。各タイプの動作、行選択ロジック、および物理実行を理解することは、正確で高性能なパイプラインを構築する上で不可欠です。"
+    },
+    "window_functions": {
+      "title": "ウィンドウ関数 (Window Functions)",
+      "description": "現在の行に関連する行のセット全体で値を計算する高度な分析操作。ランキング、オフセット（前後行の参照）、移動集計などが含まれます。"
+    },
+    "aggregations": {
+      "title": "集計処理 (Aggregations)",
+      "description": "Sparkがグループ全体の要約統計量を計算する仕組み。Hash AggregateとSort Aggregateの違いや、グループ化がShuffleに与える影響を理解することが大規模データ処理の鍵となります。"
+    },
+    "storage_and_pushdown": {
+      "title": "ストレージとプッシュダウン (Storage & Pushdown)",
+      "description": "ディスク上のデータレイアウトがSparkのパフォーマンスに与える影響。最適化されたフォーマット（Parquet/Delta）を使用すると、必要なデータのみを読み込むことができます。"
+    },
+    "persistence_and_caching": {
+      "title": "永続化とキャッシング (Persistence & Caching)",
+      "description": "リネージ（Lineage）全体を再計算せずに中間のDataFrameを再利用する方法。反復アルゴリズムや複数のActionを実行する場合に極めて重要です。"
+    },
+    "aqe_optimizations": {
+      "title": "コア最適化とAQE",
+      "description": "実際のデータ統計に基づいて実行時にクエリ計画を適応させる仕組み。Adaptive Query Execution (AQE) はモダンなSparkにおける最大のパフォーマンス向上機能です。"
+    },
+    "infrastructure": {
+      "title": "インフラとデプロイメント",
+      "description": "SparkがCluster Managerに接続し、アプリケーションのライフサイクルを管理する仕組み。すべてのSparkジョブの基盤となります。"
+    },
+    "memory_management": {
+      "title": "統合メモリ管理 (Unified Memory Management)",
+      "description": "ExecutorのRAMを計算（Execution）とキャッシュ（Storage）の間でどのように分割するか。Spark 3.xでは動的に共有する統合アプローチが採用されています。"
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "データストリームを確実に処理し、状態（State）を管理し、順序が前後して遅れて到着するレコードに対処するための高度な概念。"
+    },
+    "data_governance": {
+      "title": "データガバナンスとセキュリティ",
+      "description": "SparkがCatalogと統合して、データディスカバリ、スキーマ強制、およびきめ細かなアクセス制御（Fine-Grained Access Control）を提供する仕組み。"
+    },
+    "complex_types": {
+      "title": "複雑なデータ型 (Complex Data Types)",
+      "description": "Arrays、Structs、Maps、生のJSON文字列などの非スカラーデータの操作。モダンなAPIやNoSQLデータソースを扱う上で不可欠です。"
+    },
+    "execution_internals": {
+      "title": "実行エンジンとShuffleの内部構造",
+      "description": "Spark実行エンジンの裏側。Tungsten、メモリ管理、およびSpeculative Execution（投機的実行）についての理解を深めます。"
+    },
+    "optimizations_extra": {
+      "title": "高度な最適化チューニング",
+      "description": "AQEなどの自動メカニズムだけでは不十分な場合や、統計情報が欠落している場合にSparkを手動で調整するための設定とヒント。"
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join（内部結合）",
+      "subtitle": "両方のテーブルで一致する行のみを返す",
+      "description": "最も一般的なJoinタイプです。結合キーが両方のDataFrameに存在する行のみを返します。どちらか一方にしか存在しない行は完全に除外されます。SQLにおける定番の JOIN または INNER JOIN に相当します。",
+      "when_to_use": "対応する一致レコードがあるデータのみを対象にしたい場合に使用します。例：対応する顧客が存在する注文、対応する商品が存在する取引など。一致しないレコードが不要な場合に適しています。",
+      "edge_cases": [
+        "NULLキーは決して一致しません — 両側にNULLがあったとしても、結合キーがNULLの行は結果から除外されます。",
+        "右側に重複キーが存在する場合、それらのキーに対して直積（カルテシアン積）が発生し行数が増加します。",
+        "複数列でのInner Join：df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join（左外部結合）",
+      "subtitle": "左側のすべての行と、一致した右側の行を返す",
+      "description": "左側のDataFrameのすべての行と、右側に一致がある場合はその一致した行を返します。右側に一致がない場合、右側の列はNULLで埋められます。SQLでは LEFT JOIN とも呼ばれます。",
+      "when_to_use": "左側のDataFrameが「信頼できる唯一の情報源（Source of Truth）」であり、右側のオプションデータで情報を付加（エンリッチ）したい場合に使用します。例：すべての顧客とその最新の注文（存在する場合）を取得する。注文のない顧客も結果に残ります。",
+      "edge_cases": [
+        "右側に一致がないレコードを見つけるには：Join後に右側の列がNULLである行をフィルタリングします。",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — 一致しなかった左側の行を抽出できます。",
+        "右側に重複キーがある場合、一致した左側の行は複製されて複数行になります。"
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join（右外部結合）",
+      "subtitle": "右側のすべての行と、一致した左側の行を返す",
+      "description": "Left Outer Joinの鏡像（左右逆）です。右側のDataFrameのすべての行を返し、一致しない左側の列にはNULLを設定します。LEFT JOINほど一般的ではありません — 通常はDataFrameの左右を入れ替えてLEFT JOINを使う方が直感的で理解しやすくなります。",
+      "when_to_use": "右側のDataFrameが主たる情報源である場合に使用します。実務上は、DataFrameを入れ替えてLeft Joinを使用する方がコードがクリーンになり推論しやすくなります。",
+      "edge_cases": [
+        "users.join(orders, 'user_id', 'left') と同等 — Right Joinがどうしても必要になるケースは稀です。",
+        "一致しない右側の行に対して、左側の列にNULLパディングが行われます。"
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join（完全外部結合）",
+      "subtitle": "両側のすべての行を返し、一致しない箇所はNULLにする",
+      "description": "両方のDataFrameからすべての行を返します。一致する行は結合され、反対側に一致がない行は欠けている側の列がNULLで埋められます。SQLでは FULL JOIN または FULL OUTER JOIN とも呼ばれます。",
+      "when_to_use": "データの突合（リコンシリエーション）に使用します：2つのデータソースを比較して、一方にしか存在しないデータや両方に存在するデータを特定する場合など。ETLパイプラインでの変更検出（SCD Type 2）でよく使われます。",
+      "edge_cases": [
+        "Full Outer Joinは高コストです — Broadcast Join戦略を使用できず、常にフルShuffleが発生します。",
+        "Aにのみ存在する行を見つける：result.filter(result['name_b'].isNull())",
+        "Bにのみ存在する行を見つける：result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join（交差結合 / カルテシアン積）",
+      "subtitle": "左側のすべての行と右側のすべての行を総当たりで組み合わせる",
+      "description": "カルテシアン積（直積）を返します：左側のDataFrameの各行が、右側のDataFrameのすべての行とペアになります。左にM行、右にN行ある場合、結果はM×N行になります。結合キーは不要です。極めて高コストなため、慎重に使用してください。",
+      "when_to_use": "2つの小さなDataFrameのすべての組み合わせを生成する場合に使用します。よくある用途：レポートの骨格として「すべての日付 × すべての商品」の組み合わせを生成する、または各レコードを他のすべてのレコードと比較するなど。必ず小さなデータセットに限定して使用してください。",
+      "edge_cases": [
+        "左＝100万行、右＝100万行の場合 → 結果は1兆行になります。実行前に必ずサイズを確認してください。",
+        "Sparkでは安全装置として、暗黙的なCross Joinには spark.sql.crossJoin.enabled=true の設定が必要です。",
+        "パフォーマンス：BroadcastNestedLoopJoin または CartesianProduct 物理演算子を使用します — ハッシュテーブルは使われません。"
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join（左セミ結合）",
+      "subtitle": "右側に一致が存在する左側の行のみを返す（右側の列は除外）",
+      "description": "右側に一致が存在する左側のDataFrameの行を返しますが、右側の列は一切含めません。INNER JOINに似ていますが、取得するのは左側の列のみです。別のデータセットに基づくフィルタとして非常に便利です。",
+      "when_to_use": "存在確認フィルタとして使用します：「少なくとも1回は注文したことがあるすべての顧客を取得する」といったケースで、複数回注文した顧客の行を重複させずに取得できます。右側の列が不要な場合、Inner Joinよりも効率的です。",
+      "edge_cases": [
+        "結果のスキーマには左側のDataFrameの列のみが含まれ、右側の列は現れません。",
+        "右側に複数の一致があっても、左側の行は重複しません（Inner Joinとの大きな違いです）。",
+        "同等のSQL：SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join（左アンチ結合）",
+      "subtitle": "右側に一致が存在しない左側の行のみを返す",
+      "description": "Left Semi Joinの逆です。右側に一致が1つも存在しない左側のDataFrameの行を返します。欠損レコードや孤立レコード（Orphaned Records）を見つけるのに最適です。列は左側のDataFrameからのみ取得されます。",
+      "when_to_use": "別のテーブルに存在しないレコードを見つける場合に使用します。例：一度も注文したことがない顧客、売上がない商品、今月ログインしていないユーザーなど。データの完全性検証にも役立ちます。",
+      "edge_cases": [
+        "結合キーがNULLの行：NULL != NULL であるため、左側のNULLキーは常にAnti Joinの結果に含まれます。",
+        "同等のSQL：SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "df1.exceptAll(df1.join(df2, ..., 'inner')) よりもはるかに効率的な代替手段です。"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join（自己結合）",
+      "subtitle": "DataFrameをそれ自身と結合する",
+      "description": "Self Joinは、DataFrameをそれ自身のコピーと結合する操作です。階層関係の解決や、同じデータセット内の行同士を比較するために使用されます。左右を区別するためにエイリアス（Alias）の指定が必須です。",
+      "when_to_use": "主な用途：同一テーブル内の「マネージャーと部下」の関係の抽出、各行と他の行の比較（重複取引の検出など）、または1つのテーブルに格納されたツリー/グラフ構造の探索。",
+      "edge_cases": [
+        "Self Joinの両側には必ずエイリアス（alias）を付けてください — エイリアスがないとSparkは列名の曖昧さを解決できません。",
+        "深い階層（2レベル以上）の場合は、リネージの爆発を防ぐためにGraphXを使用するか、.checkpoint() を併用した反復Joinを行ってください。",
+        "Inner条件でのSelf JoinはN²の組み合わせを生成しやすいため、慎重にフィルタリングしてください。"
+      ]
+    },
+    "ranking_functions": {
+      "title": "ランキング関数：row_number vs rank vs dense_rank",
+      "subtitle": "同順位（タイ）の扱いと連番付与ルール",
+      "description": "これらの関数は、ウィンドウパーティション内の各行に連番を割り当てます。主な違いは、同順位（ORDER BY句で同じ値を持つ行）をどのように扱うかです。",
+      "when_to_use": "一意の連番が必要な場合は row_number、競技スタイルの順位（同順位の後に番号を飛ばす：1, 2, 2, 4）には rank、番号を飛ばさない連続した順位（1, 2, 2, 3）には dense_rank を使用します。",
+      "edge_cases": [
+        "orderBy が指定されていない場合、row_number の結果は非決定的（実行ごとに変わる可能性あり）になります。",
+        "カーディナリティや偏りのある列でのパーティション分割、あるいはパーティション指定なしのウィンドウ処理はメモリ圧迫を引き起こす可能性があります。"
+      ]
+    },
+    "offset_functions": {
+      "title": "オフセット関数：lag vs lead",
+      "subtitle": "前後のレコードへのアクセス",
+      "description": "lag と lead を使用すると、Self Joinを行わずに他の行（現在行の前または後）のデータにアクセスできます。lag はN行前を参照し、lead はN行後を参照します。",
+      "when_to_use": "時系列分析に最適です：前月比成長率の計算、ステータス変化の検出、イベント間の経過時間の算出などに活用できます。",
+      "edge_cases": [
+        "最初や最後の行でNULLになるのを防ぐため、デフォルト値（default引数）の指定が重要です。",
+        "安定した lag/lead の結果を得るには、順序付け（orderBy）が厳密である必要があります。"
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "デフォルトかつ最速の集計方式",
+      "description": "Sparkはメモリ上にハッシュマップを構築し、キーにグループ化列、値に集計バッファを保持します。Executor上での部分集計（Partial Aggregation）と、Shuffle後の最終集計（Final Aggregation）の2フェーズで動作します。",
+      "when_to_use": "ほとんどの groupBy におけるデフォルトの選択肢です。パーティションごとのユニークなグループがExecutorのメモリヒープに収まる限り、極めて高速に動作します。",
+      "edge_cases": [
+        "メモリ圧迫：ユニークなキーが多すぎる場合、Sparkはディスクへスピル（Spill）するか、SortAggregateへフォールバックします。",
+        "高カーディナリティのグループ：偏ったShuffle（Skew）を引き起こす可能性があります。"
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "巨大なグループに対応するSpill-safeなフォールバック",
+      "description": "データがグループ化キーでソートされている必要があります。Sparkはソート済みのデータを順番に走査し、新しいキーが現れるまで同じキーの値を累積計算します。",
+      "when_to_use": "グループ化キーが大きすぎてハッシュマップに収まらない場合や、データがすでにソートされている場合に使用されます。HashAggregateより低速ですが、ランダムアクセス用のハッシュマップを必要としないためメモリ面でより堅牢です。",
+      "edge_cases": [
+        "データがまだソートされていない場合、追加のソートオーバーヘッドが発生します。",
+        "Spill-safe：HashAggregateに比べてOOM（メモリ不足）でクラッシュしにくい特性があります。"
+      ]
+    },
+    "columnar_formats": {
+      "title": "列指向（カラムナ）vs 行指向フォーマット",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "列指向フォーマットは、行単位ではなく列単位でデータを格納します。SELECT句に含まれない列全体を丸ごとスキップできるため、分析クエリ（OLAP）において極めて高い効率を発揮します。",
+      "when_to_use": "大規模な分析ワークロードには常にParquetまたはDeltaを使用してください。生データのランディングゾーン以外の用途でCSVやJSONを使用するのは避けましょう。",
+      "edge_cases": [
+        "スキーマ進化（Schema Evolution）はDelta Lakeの方が適切に処理できます。",
+        "行指向フォーマット（Avroなど）は、高スループットの書き込みやストリーミングに適しています。"
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "ストレージ層でのデータフィルタリング",
+      "description": "SparkはFILTER（WHERE句）とSELECT（列選択）をストレージ層へプッシュダウンします。リーダー（Parquet/Delta）は条件に一致する行と列のみを返すため、I/Oが劇的に削減されます。",
+      "when_to_use": "パフォーマンス向上に不可欠です。フォーマットがサポートしていればSparkが自動的に実行します。頻繁にフィルタ条件として使用する列でデータをパーティション分割しておくことを推奨します。",
+      "edge_cases": [
+        "UDF（ユーザー定義関数）や複雑な式に対してはPushdownが機能しません。",
+        "フィルタは通常、トップレベルの列に対するものである必要があります。"
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "メモリとリネージ（Lineage）の管理",
+      "description": "cache() は persist(MEMORY_AND_DISK) の省略形です。DataFrameが最初に計算された後、それをメモリ（収まらない場合はディスク）に保存するようSparkに指示します。",
+      "when_to_use": "同じDataFrameが下流の複数のActionで使用される場合に使用します。例：要約統計を計算した後、同じ生データをストレージに保存する場合など。"
+    },
+    "checkpointing": {
+      "title": "Checkpointing（チェックポイント）",
+      "subtitle": "安全性のためにリネージを切り詰める",
+      "description": "cacheとは異なり、checkpoint() は信頼性の高いストレージ（HDFS/S3）にデータを保存し、リネージ（Lineage）を完全に切り詰めます（Truncate）。これにより、リネージチェーンが長くなりすぎて StackOverflowError が発生するのを防ぎます。",
+      "when_to_use": "反復アルゴリズム（機械学習など）や、リネージが極めて複雑な場合に使用します。cacheより低速ですが、より高い信頼性を持ちます。"
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "モダンSpark (3.x+) の頭脳",
+      "description": "AQEはクエリStageの「間」でクエリ計画を再最適化します。完了したStageからの実行時統計情報を使用して、残りのStageの実行計画を動的に改善します。",
+      "when_to_use": "Spark 3.2以降ではデフォルトで有効です。常にオンにしておくべきです。主に3つの問題を自動解決します：パーティションの結合（Coalescing）、Join戦略の動的切り替え、およびSkew Joinの最適化。"
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join Optimization",
+      "subtitle": "不均等なデータ分布への自動対処",
+      "description": "Data Skewは、特定のパーティションに他のパーティションよりも圧倒的に多くのデータが集まり、1つのタスクに10倍以上の時間がかかる現象です。AQEはこれを検出し、偏った巨大パーティションを小さなサブパーティションに自動分割します。",
+      "when_to_use": "Spark UIで「遅延タスク（Straggler Tasks）」が見られる場合に有効です。AQEは平均よりもはるかに大きいパーティションを探して自動的にこれを処理します。"
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "リソースオーケストレーション戦略",
+      "description": "SparkはさまざまなCluster Manager上で実行できます。YARNは従来型のHadoopマネージャーであり、Kubernetes (K8s) はモダンなクラウドネイティブアプローチです。",
+      "when_to_use": "既存のオンプレミスHadoopクラスターにはYARNを使用します。より優れた隔離性とオートスケーリングが求められるクラウドネイティブなコンテナ環境にはK8sを使用します。"
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode",
+      "subtitle": "Driverはどこで稼働するか？",
+      "description": "Client Modeでは、Driverはジョブを投入したマシン上で実行されます。Cluster Modeでは、Driverはクラスター内部（Workerノード上）で実行されます。",
+      "when_to_use": "対話型のデバッグやNotebookではClient Modeを使用します。本番ジョブでは、ネットワーク遅延を回避し、ローカルマシンの切断によるDriver障害を防ぐためにCluster Modeを使用します。"
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Memory",
+      "subtitle": "動的に変化するメモリ境界",
+      "description": "Execution MemoryはShuffleやJoinに使用され、Storage Memoryはキャッシュに使用されます。これらは同じメモリプールを共有しており、一方が空いている場合はもう一方がメモリを借りることができます。",
+      "when_to_use": "大量のキャッシュや巨大なShuffleが発生する場合は、spark.memory.fraction（デフォルト0.6）および spark.memory.storageFraction（デフォルト0.5）を調整してください。"
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Late Data（ウォーターマークと遅延データ）",
+      "subtitle": "ステートフルストリーミングにおけるメモリ使用量の制限",
+      "description": "Watermarkは追従する時間閾値です。観測された最大イベント時間を T、Watermarkを W とすると、イベント時間が (T - W) より古い遅延データは破棄されます。これにより、Sparkは古い状態をメモリから消去できます。",
+      "when_to_use": "Structured Streamingでイベント時間に基づく集計やJoinを行う場合は必須です。これがないと状態（State）が無限に肥大化し、最終的にOOMを引き起こします。"
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes（ストリーミング出力モード）",
+      "subtitle": "Sparkがストリーム結果を書き出す方法",
+      "description": "1. Append：今後変更されることのない「新しい行」のみを書き出します（集計にはWatermarkが必要）。\n2. Update：直前のトリガーで更新された行のみを書き出します。\n3. Complete：トリガーごとに結果テーブル全体を書き出します。",
+      "when_to_use": "ログやファイルへの保存にはAppend、データベースへの更新書き込みにはUpdate、小さな参照テーブルや全体集計にはCompleteを使用します。"
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "テーブルとメタデータの一元管理",
+      "description": "Catalog（またはMetastore）は、すべてのデータセットの中央ディレクトリとして機能します。テーブル名（例：\"sales.customers\"）を物理ファイル（例：\"s3://bucket/path/parquet/\"）にマッピングします。Hive Metastore (HMS) は従来のオープンソース標準であり、Unity CatalogはモダンなLakehouse向けのエンタープライズ標準です。",
+      "when_to_use": "本番環境では常にCatalogを使用してください。コード内のファイルパス直接指定だけに頼ってはいけません。物理ストレージと論理テーブルを分離することで、シームレスな移行が可能になります。"
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "行および列レベルのセキュリティ",
+      "description": "ストレージレベルのセキュリティ（IAMロール）はディレクトリ（バケットレベル）しか保護できません。Unity CatalogやAWS Lake Formationなどのモダンなカタログでは、SQLのGRANT文を用いて特定の行（例：「UK」のユーザーのみUKの行を閲覧可能）や列（マイナンバーやSSNのマスキング）へのアクセスを制限できます。",
+      "when_to_use": "PII（個人識別情報）の取り扱い、GDPRコンプライアンスへの対応、およびマルチテナントデータプラットフォームの構築において必須となります。"
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions（高階関数）",
+      "subtitle": "Array（配列）列の効率的な管理",
+      "description": "配列は explode() を使って複数の行に展開（アンネスト）できますが、データセットのサイズが何倍にも膨れ上がります。一方、高階関数（transform、filter など）を使用すると、行数を増やすことなく配列内部で直接 map/reduce 操作を行えます。",
+      "when_to_use": "配列の個別要素で groupBy や join を行う必要がある場合は explode() を使用します。元の行数を維持したまま配列の要素を変更したいだけの場合（例：すべての税額を1.2倍にする）は transform() を使用してください。"
+    },
+    "json_parsing": {
+      "title": "JSONのパース：Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "JSONテキスト列を扱う際、単一のパスを文字列として抽出する（get_json_object）か、スキーマを用いてJSON文字列全体をネイティブなSparkの StructType に変換する（from_json）かを選択できます。",
+      "when_to_use": "可能な限り、定義済みスキーマを指定して from_json() を使用してください。JSONを1回だけパースして型付き列に格納するため、同じ行に対して get_json_object() を複数回呼び出すよりもはるかに高速です。"
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution（投機的実行）",
+      "subtitle": "Straggler（遅延タスク）への対処",
+      "description": "クラスター内のノードに問題（ディスク障害やネットワーク不調）がある場合、1つのタスクだけが他のタスクより10倍長くかかることがあります（Straggler）。Speculative Executionはこれを検知し、健全な別のノードで重複タスクを起動します。先に完了した方の結果が採用されます。",
+      "when_to_use": "不安定なクラウド環境や不均一なクラスターではオン（spark.speculation=true）にします。ただし、タスクが外部データベースに書き込む場合は注意が必要です（べき等性／Idempotencyが求められます！）。"
+    },
+    "broadcast_hints": {
+      "title": "Join Hints（結合ヒント）",
+      "subtitle": "Catalystオプティマイザの判断を上書きする",
+      "description": "Sparkが正確な統計情報を持っていない場合（未整理のデータレイクからの読み込みなど）、テーブルがブロードキャスト可能なほど小さいことに気づかないことがあります。Broadcast Hintを指定すると、Sparkに BroadcastHashJoin の使用を強制できます。",
+      "when_to_use": "Spark UIで遅い SortMergeJoin を特定し、かつ片方のテーブルがExecutorのメモリに余裕で収まる（デフォルト閾値は10MBですが、実際には1GB未満程度）と確実に分かっている場合に使用します。"
+    },
+    "max_partition_bytes": {
+      "title": "ファイルと maxPartitionBytes",
+      "subtitle": "読み込みパーティションのチューニング",
+      "description": "何百もの極小CSV/JSONファイルを読み込む際、Sparkが1ファイルを1パーティションにマッピングすると大きなオーバーヘッドが発生します。spark.sql.files.maxPartitionBytes（デフォルト128MB）を使用すると、読み込み時に複数の小さなファイルを単一のパーティションにまとめる（パックする）ことができます。",
+      "when_to_use": "読み込みStageに10ミリ秒で終わるタスクが何千個も存在する場合、「極小ファイル症候群（Tiny-file syndrome）」に陥っています。maxPartitionBytes を調整するか、ファイルのコンパクション（統合）を行ってください。"
+    }
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "全体像（フルオーバービュー）",
+      "description": "全6つの設計フェーズにわたる49ノードの完全なアーキテクチャマップ。Fit View [ ] を使うか、任意のクラスターにズームインして、意思決定とフェーズ間のトレードオフを確認してください。"
+    },
+    "infraestructura_cluster": {
+      "label": "インフラとメモリ管理",
+      "description": "フェーズ0：コードを実行する前に、Cluster Managerとメモリ割り当て戦略を定義します。これが運用上の限界を決定します。"
+    },
+    "contexto": {
+      "label": "問題のコンテキスト",
+      "description": "まずビジネス上の課題を理解します。データの到着レート、レイテンシSLA、処理モードが、以降のすべてのSpark設計を左右します。"
+    },
+    "datos": {
+      "label": "データの特性",
+      "description": "データセットのサイズ、分布（Data Skew）、保存フォーマット、およびガバナンス（Catalogs & ACLs）が物理実行戦略を決定します。"
+    },
+    "transformaciones": {
+      "label": "変換処理（Transformation）の種類",
+      "description": "Join、GroupBy、複雑なデータ型（Arrays、JSON）は、パイプラインの構造レイアウトとShuffleコストを定義します。"
+    },
+    "ejecucion": {
+      "label": "実行時の影響",
+      "description": "DAG、Shuffleの影響、タスクのパフォーマンス（Speculative Execution）を分析し、真のボトルネックがどこにあるかを把握します。"
+    },
+    "optimization": {
+      "label": "最適化戦略",
+      "description": "最終チューニング：パーティション管理、キャッシング、AQEによる実行時適応、および手動ヒント・チューニング。"
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Sparkパイプライン設計",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "問題のコンテキスト",
+      "pregunta_guia": "このパイプラインは何を解決する必要があり、どのような運用上の制約があるか？"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "データは個別のバッチとして到着するか、それとも連続したストリームとして到着するか？"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "許容される最小レイテンシはどの程度か：秒単位（Micro-batch）か、ミリ秒単位（Continuous）か？"
+    },
+    "slas_latencia": {
+      "nombre": "SLAとレイテンシ目標",
+      "pregunta_guia": "定義されたSLAはあるか？許容される最大処理レイテンシはどのくらいか？"
+    },
+    "trade_latency_throughput": {
+      "nombre": "トレードオフ：レイテンシ vs スループット",
+      "pregunta_guia": "イベント単位の応答速度（レイテンシ）を最適化するか、それとも総処理量（スループット）を最適化するか？"
+    },
+    "datos": {
+      "nombre": "データの特性",
+      "pregunta_guia": "どのデータ特性が処理戦略を形作るか？"
+    },
+    "tamano_datos": {
+      "nombre": "データセットのサイズ",
+      "pregunta_guia": "データ規模の桁数はどのくらいか？ MB、GB、TB？"
+    },
+    "candidato_broadcast": {
+      "nombre": "データセットはBroadcast用にメモリに収まるか？",
+      "pregunta_guia": "小さい方のテーブルは spark.sql.autoBroadcastJoinThreshold（デフォルト10MB）に収まるか？"
+    },
+    "distribucion_datos": {
+      "nombre": "データの分布",
+      "pregunta_guia": "データはパーティション間で均等に分散しているか、それとも支配的なキーが存在するか？"
+    },
+    "data_skew": {
+      "nombre": "Data Skew（データ偏り）の検出と対処",
+      "pregunta_guia": "著しく巨大なパーティションが存在するか？極端な偏りを持つキーがあるか？"
+    },
+    "formato_datos": {
+      "nombre": "ストレージフォーマット",
+      "pregunta_guia": "そのフォーマットは列指向（カラムナ）読み込み、効率的な圧縮、パーティションプルーニングをサポートしているか？"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "メモリに読み込む前に、フィルタ処理や列選択をストレージ層へプッシュダウンできるか？"
+    },
+    "transformaciones": {
+      "nombre": "変換処理（Transformation）の種類",
+      "pregunta_guia": "どの変換カテゴリが支配的か？それはShuffleを発生させるか？"
+    },
+    "diseno_joins": {
+      "nombre": "Joinの設計",
+      "pregunta_guia": "データサイズと分布を考慮したとき、どの物理Join戦略がShuffleを最小化できるか？"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "テーブルが小さければBHJ。データがメモリに収まるならSHJ。データが大きくソート可能ならSMJ（デフォルト）。"
+    },
+    "agregaciones": {
+      "nombre": "集計とGroupBy",
+      "pregunta_guia": "Shuffleの前に、各パーティション内で事前集計（部分集計）を完了できるか？"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregateは高速だがグループがメモリに収まる必要がある。Sort Aggregateはディスクスピルに強い（Spill-safe）。"
+    },
+    "operaciones_ventana": {
+      "nombre": "ウィンドウ操作 (Window Operations)",
+      "pregunta_guia": "ビジネスロジックで、ソートされたデータパーティション上の計算（ランキング、lag、移動平均など）が必要か？"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy 戦略",
+      "pregunta_guia": "ウィンドウのパーティションキーは均等な分布を生むか、それともData Skewを増幅させるか？"
+    },
+    "ejecucion": {
+      "nombre": "実行時の影響",
+      "pregunta_guia": "変換処理はDAGのStageにどのように具体化されるか？どのようなボトルネックを生むか？"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffleの発生",
+      "pregunta_guia": "パイプラインにいくつのStage境界が生じるか？ネットワーク越しにどれだけのデータが移動するか？"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "spark.sql.shuffle.partitions のチューニング",
+      "pregunta_guia": "パーティション数は約100〜200MBのブロックを生成しているか？多すぎてオーバーヘッドになっていないか、少なすぎてSpillしていないか？"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stageの分析",
+      "pregunta_guia": "DAGに冗長なStageはないか？中間のDataFrameが複数回再利用されていないか？"
+    },
+    "recomputo_dataframe": {
+      "nombre": "同じDataFrameが複数のActionで再計算されていないか？",
+      "pregunta_guia": "DataFrameが永続化（Persist/Cache）されずにDAG内の複数のAction分岐をトリガーすると、毎回最初から再計算されます。"
+    },
+    "optimization": {
+      "nombre": "最適化戦略",
+      "pregunta_guia": "Shuffleを減らし、再計算を回避し、メモリを効率的に管理するためにどの手法が適用できるか？"
+    },
+    "control_particiones": {
+      "nombre": "物理パーティション制御",
+      "pregunta_guia": "負荷分散のためにデータを再分配したり、出力ファイル数を減らしたりする必要があるか？"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition：Shuffleを発生させ均等化する。Coalesce：Shuffleなしで、再分配せずにパーティション数のみを削減する。"
+    },
+    "persistencia": {
+      "nombre": "中間DataFrameの永続化",
+      "pregunta_guia": "高コストな再計算を避けるために、この中間DataFrameを具体化（保存）する価値はあるか？"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache：高速でリネージ（Lineage）を保持する。Checkpoint：DAGリネージを切り詰め、ディスクに書き込むためより堅牢。"
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "AQEは有効か（Spark 3+）？このパイプラインに対してどのような自動最適化を提供するか？"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQEは実行時に実行計画を動的に変更可能：Shuffle後のパーティション結合、Broadcastへの変換、Skewパーティションの分割を行います。"
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "どのリソースマネージャーがExecutorを調整し、メモリはどのように管理されるか？"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "定番のエンタープライズ選択肢。HDFSやMapReduceエコシステムと統合されています。"
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "モダンなクラウドネイティブ選択肢。コンテナ化されたExecutorと高い隔離性を提供します。"
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "SparkはExecution（実行）とStorage（キャッシュ）の間でどのようにRAMを割り当てるか？"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "複数のバッチにまたがってデータを集計する必要があるか（例：累積合計、セッション化）？"
+    },
+    "watermarking": {
+      "nombre": "Watermarking（遅延データ処理）",
+      "pregunta_guia": "状態をクリアする前に、遅れて到着するデータをSparkはどのくらいの時間待つべきか？"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Output Modes（出力モード）",
+      "pregunta_guia": "集計結果をどのように書き出すか？ Append、Update、それともCompleteか？"
+    },
+    "gobernanza_datos": {
+      "nombre": "データガバナンスとディスカバリ",
+      "pregunta_guia": "ユーザーはこのデータセットをどのように見つけ、誰がアクセスを許可されるのか？"
+    },
+    "sistema_catalogo": {
+      "nombre": "Catalogシステム (Hive vs Unity)",
+      "pregunta_guia": "SQLアクセスやリネージ追跡のために、中央のMetastoreにテーブルを登録すべきか？"
+    },
+    "control_acceso": {
+      "nombre": "アクセス制御 (ACLs)",
+      "pregunta_guia": "きめ細かなアクセス制御（行・列レベル）が必要か、それともストレージレベルのIAMで十分か？"
+    },
+    "tipos_complejos": {
+      "nombre": "複雑なデータ型 (Complex Data Types)",
+      "pregunta_guia": "ネストされた構造（JSON、Maps、Arrays）を扱っているか？"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "配列を行に展開するか（explode）、それともインラインで変更するか（transform SQL高階関数）？"
+    },
+    "extraccion_json": {
+      "nombre": "ネストされたJSONのパース",
+      "pregunta_guia": "単一の文字列フィールドを抽出すべきか、それともJSON全体をSparkのStructにパースすべきか？"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution（投機的実行）",
+      "pregunta_guia": "ハードウェアの問題や不良ノードが原因で、一部のタスクがランダムに極端に遅くなっていないか？"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "高度なチューニングとHints",
+      "pregunta_guia": "統計情報が不十分な場合、手動でCatalystオプティマイザを誘導できるか？"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "オプティマイザがテーブルサイズを誤って推測した場合、Join戦略を強制すべきか？"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes のチューニング",
+      "pregunta_guia": "数百万個の極小ファイルを読み込んでいるか、それとも分割不可能な巨大チャンクを読み込んでいるか？"
+    }
+  },
+  "edges": {
+    "e01": "選択した処理モードが達成可能なレイテンシ範囲を定義します。Batchでは1分未満のレイテンシは保証できません。",
+    "e02": "データセットのサイズはBroadcast Joinが適用可能かを直接決定します。閾値を超えると除外されます。",
+    "e03": "データセットがブロードキャスト閾値を満たす場合、BHJが最適なデフォルトの選択肢となります。",
+    "e04": "偏ったキー分布は不均等なサイズのパーティションを生み出し、Data Skewとして現れます。",
+    "e05": "Data SkewはSort Merge Joinに深刻な影響を与えます：単一のパーティションにほとんどの負荷が集中します。",
+    "e06": "AQEを有効にすると、Skew Joinオプティマイザが実行時に過負荷のパーティションを分割します。",
+    "e07": "ウィンドウのパーティションキーがSkewキーと一致すると、対応するExecutorが過負荷になります。",
+    "e08": "BHJ以外のすべてのJoinは、Stage境界とフルShuffle操作を発生させます。",
+    "e09": "groupBy/agg 操作は、異なるパーティションから同一キーの行を集めるために本質的にShuffleを発生させます。",
+    "e10": "Window関数はデータをパーティション分割およびソートするためにShuffleをトリガーします。",
+    "e11": "Shuffle後のデータ量が、約128〜200MBのブロックを維持するための最適なパーティション数を決定します。",
+    "e12": "AQEはShuffleの具体化ポイントで機能し、結果のパーティション数を動的に調整します。",
+    "e13": "中間DataFrameが複数のActionのソースである場合、再計算を防ぐために永続化（Persist）が必要になります。",
+    "e14": "列指向フォーマット（Parquet、ORC）はProjection Pushdownをネイティブにサポートしますが、CSV/JSONはサポートしません。",
+    "e15": "効果的なPushdownはメモリに読み込まれるデータ量を削減し、下流のサイズ制限を緩和します。",
+    "e16": "過度なShuffleは、物理パーティション制御（Repartition/Coalesce）の必要性を促します。",
+    "e17": "厳格なSLAがある場合、ディスク書き込みによる追加レイテンシが発生するためCheckpointの使用が制限されることがあります。",
+    "e18": "スループット優先ならより多くのパーティション（並列度）が必要になり、レイテンシ優先ならタスク数を減らす必要があります。"
+  }
+}

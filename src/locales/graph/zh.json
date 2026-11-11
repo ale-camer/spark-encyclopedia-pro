@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "完整流程（全局概览）",
+      "description": "涵盖全部 6 个设计阶段的完整 49 节点架构图。使用 Fit View [ ] 或缩放至任意节点簇，以检查决策及跨阶段权衡。"
+    },
+    "infraestructura_cluster": {
+      "label": "基础设施与内存",
+      "description": "阶段 0：在运行任何代码之前定义集群管理器（Cluster Manager）和内存分配策略。这决定了运行边界。"
+    },
+    "contexto": {
+      "label": "问题背景",
+      "description": "首先理解业务问题。数据到达速率、延迟 SLA 和处理模式决定了后续所有的 Spark 决策。"
+    },
+    "datos": {
+      "label": "数据特征",
+      "description": "数据集大小、分布（Data Skew）、存储格式以及数据治理（Catalogs & ACLs）决定了物理执行策略。"
+    },
+    "transformaciones": {
+      "label": "转换类型",
+      "description": "Join、GroupBy 和复杂数据类型（Arrays、JSON）定义了流水线的结构布局和 Shuffle 成本。"
+    },
+    "ejecucion": {
+      "label": "执行影响",
+      "description": "分析 DAG、Shuffle 影响以及任务性能（Speculative Execution），以定位真正的性能瓶颈。"
+    },
+    "optimization": {
+      "label": "优化策略",
+      "description": "最终调优：分区管理、缓存（Caching）、AQE 运行时自适应优化以及手动 Hints/调优。"
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark 流水线设计",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "问题背景",
+      "pregunta_guia": "该流水线需要解决什么问题？在什么运行约束下执行？"
+    },
+    "modo_procesamiento": {
+      "nombre": "批处理 vs 流处理 (Batch vs Streaming)",
+      "pregunta_guia": "数据是按离散批次到达，还是作为连续数据流到达？"
+    },
+    "modo_streaming": {
+      "nombre": "微批处理 vs 连续处理 (Micro-batch vs Continuous)",
+      "pregunta_guia": "可接受的最小延迟是多少：秒级（Micro-batch）还是毫秒级（Continuous）？"
+    },
+    "slas_latencia": {
+      "nombre": "SLA 与延迟目标",
+      "pregunta_guia": "是否有明确的 SLA？可接受的最大处理延迟是多少？"
+    },
+    "trade_latency_throughput": {
+      "nombre": "权衡：延迟 vs 吞吐量 (Latency vs Throughput)",
+      "pregunta_guia": "我是优化单事件响应速度（延迟），还是优化总处理数据量（吞吐量）？"
+    },
+    "datos": {
+      "nombre": "数据特征",
+      "pregunta_guia": "哪些数据属性决定了处理策略？"
+    },
+    "tamano_datos": {
+      "nombre": "数据集大小",
+      "pregunta_guia": "数据的数量级是多少？MB、GB 还是 TB？"
+    },
+    "candidato_broadcast": {
+      "nombre": "数据集是否适合放入内存进行 Broadcast？",
+      "pregunta_guia": "小表是否小于 spark.sql.autoBroadcastJoinThreshold（默认 10MB）？"
+    },
+    "distribucion_datos": {
+      "nombre": "数据分布",
+      "pregunta_guia": "数据在各分区之间是否均衡，还是存在主导的倾斜 Key？"
+    },
+    "data_skew": {
+      "nombre": "数据倾斜 (Data Skew) 检测与处理",
+      "pregunta_guia": "是否存在明显偏大的分区？是否存在极高基数或高度集中的 Key？"
+    },
+    "formato_datos": {
+      "nombre": "存储格式",
+      "pregunta_guia": "该格式是否支持列式读取、高效压缩和分区裁剪（Partition Pruning）？"
+    },
+    "pushdown_lectura": {
+      "nombre": "谓词 / 投影下推 (Predicate / Projection Pushdown)",
+      "pregunta_guia": "在将数据读入内存之前，过滤条件和列选择能否下推到存储层？"
+    },
+    "transformaciones": {
+      "nombre": "转换类型",
+      "pregunta_guia": "哪种转换操作占主导？它会产生 Shuffle 吗？"
+    },
+    "diseno_joins": {
+      "nombre": "Join 设计",
+      "pregunta_guia": "在当前数据大小和分布下，哪种物理 Join 策略能最小化 Shuffle？"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "表较小时用 BHJ；数据能放入内存时用 SHJ；数据量大且可排序时用 SMJ（默认）。"
+    },
+    "agregaciones": {
+      "nombre": "聚合与 GroupBy",
+      "pregunta_guia": "在 Shuffle 之前，聚合操作能否在每个分区内部完成预聚合？"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate 速度更快，但要求分组能放入内存；Sort Aggregate 支持安全的磁盘溢写（Spill-safe）。"
+    },
+    "operaciones_ventana": {
+      "nombre": "窗口操作 (Window Operations)",
+      "pregunta_guia": "业务逻辑是否需要在排序后的数据分区上进行计算（如排名、lag、滚动平均）？"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy 策略",
+      "pregunta_guia": "窗口分区 Key 会产生均衡分布，还是会放大 Data Skew？"
+    },
+    "ejecucion": {
+      "nombre": "执行影响",
+      "pregunta_guia": "转换操作如何在 DAG 的各个 Stage 中物化？会产生什么瓶颈？"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle 生成",
+      "pregunta_guia": "流水线引入了多少个 Stage 边界？有多少数据需要跨网络传输？"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "调优 spark.sql.shuffle.partitions",
+      "pregunta_guia": "分区数量是否使每个数据块保持在 ~100-200MB？是过高（调度开销大）还是过低（导致磁盘溢写 Spill）？"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Stage 分析",
+      "pregunta_guia": "DAG 是否包含冗余的 Stage？中间 DataFrame 是否被重复使用了多次？"
+    },
+    "recomputo_dataframe": {
+      "nombre": "同一个 DataFrame 是否在多个 Action 中被重复计算？",
+      "pregunta_guia": "如果一个 DataFrame 在未持久化的情况下触发了 DAG 中的多个 Action 分支，它每次都会被完整重新计算。"
+    },
+    "optimization": {
+      "nombre": "优化策略",
+      "pregunta_guia": "可以采用哪些技术来减少 Shuffle、避免重复计算并高效管理内存？"
+    },
+    "control_particiones": {
+      "nombre": "物理分区控制",
+      "pregunta_guia": "是否需要重新分布数据以实现负载均衡，或者减少输出文件数量？"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition：产生 Shuffle，实现负载均衡。Coalesce：不产生 Shuffle，仅合并减少分区而不重新洗牌。"
+    },
+    "persistencia": {
+      "nombre": "中间 DataFrame 持久化",
+      "pregunta_guia": "是否值得物化这个中间 DataFrame 以避免高昂的重复计算成本？"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache：速度快，保留血缘（Lineage）。Checkpoint：截断 DAG 血缘，写入可靠磁盘，更加稳健。"
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "是否启用了 AQE（Spark 3+）？它能为该流水线提供哪些自动优化？"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE 可在运行时彻底改变执行计划：自动合并 Shuffle 后分区、动态转换为 Broadcast Join 以及拆分倾斜分区。"
+    },
+    "infraestructura_cluster": {
+      "nombre": "集群管理器 (Cluster Managers)",
+      "pregunta_guia": "由哪个资源管理器协调 Executor？内存如何管理？"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "经典的企业级选择，与 HDFS 和 MapReduce 生态系统深度集成。"
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "现代云原生选择，提供容器化的 Executor 与良好的资源隔离。"
+    },
+    "gestion_memoria": {
+      "nombre": "统一内存管理器 (Unified Memory Manager)",
+      "pregunta_guia": "Spark 如何在执行内存（Execution）和存储缓存（Storage）之间分配 RAM？"
+    },
+    "manejo_estado": {
+      "nombre": "有状态 vs 无状态流处理 (Stateful vs Stateless)",
+      "pregunta_guia": "是否需要跨多个批次聚合数据（例如滚动汇总、会话窗口 Sessionization）？"
+    },
+    "watermarking": {
+      "nombre": "Watermarking（迟到数据处理）",
+      "pregunta_guia": "在清理状态之前，Spark 应该等待迟到数据多长时间？"
+    },
+    "modos_salida_streaming": {
+      "nombre": "输出模式 (Output Modes)",
+      "pregunta_guia": "如何写入聚合结果？使用 Append、Update 还是 Complete？"
+    },
+    "gobernanza_datos": {
+      "nombre": "数据治理与发现",
+      "pregunta_guia": "用户如何发现该数据集？允许谁访问它？"
+    },
+    "sistema_catalogo": {
+      "nombre": "Catalog 系统 (Hive vs Unity)",
+      "pregunta_guia": "是否应将表注册到中央 Metastore 以支持 SQL 访问和血缘追踪？"
+    },
+    "control_acceso": {
+      "nombre": "访问控制 (ACLs)",
+      "pregunta_guia": "是否需要细粒度访问控制（行/列级），还是存储级 IAM 就足够了？"
+    },
+    "tipos_complejos": {
+      "nombre": "复杂数据类型",
+      "pregunta_guia": "我们是否在处理嵌套结构（JSON、Maps、Arrays）？"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "是将数组展平为多行（explode），还是在行内直接修改数组（transform SQL 高阶函数）？"
+    },
+    "extraccion_json": {
+      "nombre": "嵌套 JSON 解析",
+      "pregunta_guia": "应该提取单个字符串字段，还是将整个 JSON 解析为 Spark Struct？"
+    },
+    "manejo_rezagados": {
+      "nombre": "推测执行 (Speculative Execution)",
+      "pregunta_guia": "是否由于硬件故障或慢节点导致部分任务随机变得极慢？"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "高级调优与 Hints",
+      "pregunta_guia": "当统计信息失效时，能否手动指导 Catalyst 优化器？"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "如果优化器错误估计了表大小，是否应该强制指定某种 Join 策略？"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes 调优",
+      "pregunta_guia": "我们是在读取数百万个微小文件，还是读取不可切分的超大文件块？"
+    }
+  },
+  "edges": {
+    "e01": "所选的处理模式决定了可达到的延迟范围。批处理无法保证亚分钟级延迟。",
+    "e02": "数据集大小直接决定是否适用 Broadcast Join。超过阈值则排除该策略。",
+    "e03": "如果数据集满足广播阈值，Broadcast Hash Join (BHJ) 是最优的默认选择。",
+    "e04": "不均衡的 Key 分布会产生大小不一的分区，表现为数据倾斜（Data Skew）。",
+    "e05": "Data Skew 会严重影响 Sort Merge Join：单个分区集中了大部分计算负载。",
+    "e06": "启用 AQE 后，Skew Join 优化器会在运行时自动拆分过载的倾斜分区。",
+    "e07": "如果窗口分区 Key 恰好是倾斜 Key，对应的 Executor 将会过载。",
+    "e08": "除 BHJ 以外的任何 Join 都会引入 Stage 边界和全量 Shuffle 操作。",
+    "e09": "groupBy/agg 操作天然会产生 Shuffle，以便将来自不同分区的相同 Key 行聚集到一起。",
+    "e10": "窗口函数会触发 Shuffle 以对数据进行分区和排序。",
+    "e11": "Shuffle 后的数据量决定了最优分区数，以保持每个数据块在 ~128-200MB 左右。",
+    "e12": "AQE 在 Shuffle 物化点生效，动态调整生成的分区数量。",
+    "e13": "如果中间 DataFrame 是多个 Action 的数据源，重复计算会触发持久化的需求。",
+    "e14": "列式格式（Parquet、ORC）原生支持 Projection Pushdown，而 CSV/JSON 不支持。",
+    "e15": "有效的 Pushdown 能大幅缩减读入内存的数据量，缓解下游的容量限制。",
+    "e16": "过多的 Shuffle 促使我们需要进行物理分区控制（Repartition/Coalesce）。",
+    "e17": "严格的 SLA 可能会禁止使用 Checkpoint（磁盘写入），因为它会引入额外的延迟。",
+    "e18": "优先保障吞吐量意味着需要更多分区（高并行度）；优先保障低延迟则需要更少的任务开销。"
+  }
+}

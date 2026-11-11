@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "الرحلة الكاملة (نظرة عامة شاملة)",
+      "description": "خريطة معمارية كاملة مكونة من 49 عقدة عبر جميع مراحل التصميم الست. استخدم ملاءمة العرض [ ] أو قم بالتكبير على أي مجموعة لفحص القرارات والمفاضلات بين المراحل."
+    },
+    "infraestructura_cluster": {
+      "label": "البنية التحتية والذاكرة",
+      "description": "المرحلة 0: حدد مدير المجموعة (Cluster Manager) واستراتيجية تخصيص الذاكرة قبل تشغيل أي كود. هذا يحدد الحدود التشغيلية."
+    },
+    "contexto": {
+      "label": "سياق المشكلة",
+      "description": "افهم مشكلة العمل أولاً. معدل وصول البيانات، واتفاقيات مستوى الخدمة لزمن الاستجابة (SLAs)، ووضع المعالجة كلها عوامل تحدد قرارات Spark اللاحقة."
+    },
+    "datos": {
+      "label": "خصائص البيانات",
+      "description": "حجم مجموعة البيانات، والتوزيع (Skew)، وتنسيق التخزين، والحوكمة (Catalogs & ACLs) تحدد استراتيجيات التنفيذ الفعلي."
+    },
+    "transformaciones": {
+      "label": "أنواع التحويلات",
+      "description": "عمليات Join و GroupBy وأنواع البيانات المعقدة (Arrays, JSON) تحدد التخطيط الهيكلي وتكلفة Shuffle لخط الأنابيب."
+    },
+    "ejecucion": {
+      "label": "تداعيات التنفيذ",
+      "description": "حلل مخطط DAG، وتأثير Shuffle، وأداء المهام (Speculative Execution) لفهم مكان الاختناقات الحقيقية."
+    },
+    "optimization": {
+      "label": "استراتيجيات التحسين",
+      "description": "الضبط النهائي: إدارة الأقسام (Partitions)، والتخزين المؤقت (Caching)، والتكيف أثناء التشغيل عبر AQE، والتلميحات اليدوية (Hints)."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "تصميم خط أنابيب Spark",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "سياق المشكلة",
+      "pregunta_guia": "ما الذي يحتاج خط الأنابيب هذا إلى حله وتحت أي قيود تشغيلية؟"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch مقابل Streaming",
+      "pregunta_guia": "هل تصل البيانات في دفعات منفصلة (Batch) أم كتيار مستمر (Streaming)؟"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch مقابل Continuous Processing",
+      "pregunta_guia": "ما هو الحد الأدنى المقبول لزمن الاستجابة: ثوانٍ (micro-batch) أم أجزاء من الثانية (continuous)؟"
+    },
+    "slas_latencia": {
+      "nombre": "اتفاقيات SLA وأهداف زمن الاستجابة",
+      "pregunta_guia": "هل هناك اتفاقيات SLA محددة؟ ما هو الحد الأقصى المقبول لزمن استجابة المعالجة؟"
+    },
+    "trade_latency_throughput": {
+      "nombre": "المفاضلة: زمن الاستجابة (Latency) مقابل الإنتاجية (Throughput)",
+      "pregunta_guia": "هل أقوم بتحسين سرعة الاستجابة لكل حدث (latency) أم إجمالي الحجم المعالج (throughput)؟"
+    },
+    "datos": {
+      "nombre": "خصائص البيانات",
+      "pregunta_guia": "ما هي خصائص البيانات التي تشكل استراتيجية المعالجة؟"
+    },
+    "tamano_datos": {
+      "nombre": "حجم مجموعة البيانات",
+      "pregunta_guia": "ما هو حجم البيانات التقريبي؟ MB أم GB أم TB؟"
+    },
+    "candidato_broadcast": {
+      "nombre": "هل تتسع مجموعة البيانات في الذاكرة لعمل Broadcast؟",
+      "pregunta_guia": "هل يتسع الجدول الصغير ضمن حد spark.sql.autoBroadcastJoinThreshold (الافتراضي 10MB)؟"
+    },
+    "distribucion_datos": {
+      "nombre": "توزيع البيانات",
+      "pregunta_guia": "هل البيانات متوازنة عبر الأقسام (Partitions) أم أن هناك مفاتيح مهيمنة؟"
+    },
+    "data_skew": {
+      "nombre": "اكتشاف ومعالجة Data Skew",
+      "pregunta_guia": "هل توجد أقسام أكبر بكثير من غيرها؟ هل توجد مفاتيح ذات تكرار متطرف؟"
+    },
+    "formato_datos": {
+      "nombre": "تنسيق التخزين",
+      "pregunta_guia": "هل يدعم التنسيق القراءة العمودية (Columnar read)، والضغط الفعال، وتقليم الأقسام (Partition Pruning)؟"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "هل يمكن دفع الفلاتر واختيار الأعمدة إلى مستوى التخزين قبل القراءة في الذاكرة؟"
+    },
+    "transformaciones": {
+      "nombre": "أنواع التحويلات",
+      "pregunta_guia": "أي فئة من التحويلات تهيمن؟ وهل تولد عملية Shuffle؟"
+    },
+    "diseno_joins": {
+      "nombre": "تصميم Join",
+      "pregunta_guia": "أي استراتيجية Join فعلية تقلل من Shuffle بالنظر إلى حجم البيانات وتوزيعها؟"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash مقابل Shuffle Hash مقابل Sort Merge Join",
+      "pregunta_guia": "BHJ إذا كان الجدول صغيراً. SHJ إذا كانت البيانات تتسع في الذاكرة. SMJ (الافتراضي) إذا كانت البيانات كبيرة وقابلة للفرز."
+    },
+    "agregaciones": {
+      "nombre": "التجميعات (Aggregations) و GroupBy",
+      "pregunta_guia": "هل يمكن إجراء التجميع المسبق بالكامل داخل كل قسم قبل عملية Shuffle؟"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate مقابل Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate أسرع ولكنه يتطلب أن تتسع المجموعة في الذاكرة. Sort Aggregate آمن ضد الامتلاء (spill-safe)."
+    },
+    "operaciones_ventana": {
+      "nombre": "عمليات النوافذ (Window Operations)",
+      "pregunta_guia": "هل يتطلب منطق العمل حسابات على أقسام بيانات مرتبة (ranking, lag, rolling avg)؟"
+    },
+    "particionado_ventana": {
+      "nombre": "استراتيجية Window partitionBy",
+      "pregunta_guia": "هل يولد مفتاح تقسيم النافذة توزيعاً متوازناً أم يضخم انحراف البيانات (Data Skew)؟"
+    },
+    "ejecucion": {
+      "nombre": "تداعيات التنفيذ",
+      "pregunta_guia": "كيف تتجسد التحويلات في مراحل مخطط DAG؟ وما هي الاختناقات التي تولدها؟"
+    },
+    "impacto_shuffle": {
+      "nombre": "توليد Shuffle",
+      "pregunta_guia": "كم عدد حدود المراحل (Stage boundaries) التي يدخلها خط الأنابيب؟ وكم حجم البيانات المنتقلة عبر الشبكة؟"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "ضبط spark.sql.shuffle.partitions",
+      "pregunta_guia": "هل ينتج عن عدد الأقسام كتل بحجم ~100-200MB؟ هل العدد مرتفع جداً (عبء إضافي) أم منخفض جداً (انسكاب على القرص / spill)؟"
+    },
+    "analisis_dag": {
+      "nombre": "تحليل مراحل DAG",
+      "pregunta_guia": "هل يحتوي مخطط DAG على مراحل متكررة؟ هل يتم إعادة استخدام DataFrame وسيط عدة مرات؟"
+    },
+    "recomputo_dataframe": {
+      "nombre": "هل يتم إعادة تقييم نفس DataFrame في عدة إجراءات (Actions)؟",
+      "pregunta_guia": "إذا أطلق DataFrame عدة فروع لإجراءات في مخطط DAG دون حفظه (persist)، فسيتم إعادة حسابه بالكامل في كل مرة."
+    },
+    "optimization": {
+      "nombre": "استراتيجيات التحسين",
+      "pregunta_guia": "ما هي التقنيات المطبقة لتقليل Shuffle، وتجنب إعادة الحساب، وإدارة الذاكرة بكفاءة؟"
+    },
+    "control_particiones": {
+      "nombre": "التحكم الفعلي في الأقسام (Partitions)",
+      "pregunta_guia": "هل هناك حاجة لإعادة توزيع البيانات لموازنة الحمل أو لتقليل ملفات الإخراج؟"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition مقابل Coalesce",
+      "pregunta_guia": "Repartition: يولد Shuffle ويوازن البيانات. Coalesce: بدون Shuffle، يقلل العدد فقط دون إعادة التوزيع."
+    },
+    "persistencia": {
+      "nombre": "حفظ DataFrame الوسيط (Persistence)",
+      "pregunta_guia": "هل يستحق الأمر تثبيت هذا الـ DataFrame الوسيط لتجنب إعادة الحساب المكلفة؟"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache مقابل Checkpoint",
+      "pregunta_guia": "Cache: سريع، يحتفظ بسلسلة النسب (lineage). Checkpoint: يقطع سلسلة نسب DAG، يكتب على القرص، وأكثر متانة."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "هل AQE مفعل (Spark 3+)؟ ما هي التحسينات التلقائية التي يقدمها لخط الأنابيب هذا؟"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "يمكن لـ AQE تغيير خطة التنفيذ بالكامل أثناء التشغيل: يدمج الأقسام بعد Shuffle، ويحول إلى Broadcast، ويقسم الأقسام المنحرفة."
+    },
+    "infraestructura_cluster": {
+      "nombre": "مديرو المجموعات (Cluster Managers)",
+      "pregunta_guia": "أي مدير موارد سينسق المنفذين (Executors) وكيف تتم إدارة الذاكرة؟"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "الخيار المؤسسي الكلاسيكي. متكامل مع أنظمة HDFS و MapReduce."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "الخيار السحابي الحديث (Cloud-native). منفذون داخل حاويات Docker وعزل قوي."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "كيف سيخصص Spark ذاكرة RAM بين التنفيذ (Execution) وذاكرة التخزين المؤقت (Storage)؟"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful مقابل Stateless Streaming",
+      "pregunta_guia": "هل نحتاج إلى تجميع البيانات عبر دفعات متعددة (مثل المجاميع المتحركة، أو تتبع الجلسات)؟"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (البيانات المتأخرة)",
+      "pregunta_guia": "كم من الوقت يجب أن ينتظر Spark وصول البيانات المتأخرة قبل مسح الحالة (State)؟"
+    },
+    "modos_salida_streaming": {
+      "nombre": "أوضاع الإخراج (Output Modes)",
+      "pregunta_guia": "كيف نكتب النتائج المجمعة؟ هل نستخدم Append أم Update أم Complete؟"
+    },
+    "gobernanza_datos": {
+      "nombre": "حوكمة البيانات واكتشافها",
+      "pregunta_guia": "كيف سيكتشف المستخدمون مجموعة البيانات هذه ومن يُسمح له بالوصول إليها؟"
+    },
+    "sistema_catalogo": {
+      "nombre": "نظام الكتالوج (Hive مقابل Unity)",
+      "pregunta_guia": "هل يجب تسجيل الجداول في مخزن بيانات وصفية مركزي (Metastore) للوصول عبر SQL وتتبع النسب؟"
+    },
+    "control_acceso": {
+      "nombre": "التحكم في الوصول (ACLs)",
+      "pregunta_guia": "هل نحتاج إلى تحكم دقيق في الوصول (على مستوى الصف/العمود FGAC) أم أن صلاحيات IAM على مستوى التخزين كافية؟"
+    },
+    "tipos_complejos": {
+      "nombre": "أنواع البيانات المعقدة",
+      "pregunta_guia": "هل نعمل مع هياكل متداخلة (JSON, Maps, Arrays)؟"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode مقابل Transform",
+      "pregunta_guia": "هل نقوم بتفكيك المصفوفات إلى صفوف (explode) أم تعديلها مباشرة في مكانها (transform SQL HOF)؟"
+    },
+    "extraccion_json": {
+      "nombre": "تحليل JSON المتداخل",
+      "pregunta_guia": "هل يجب استخراج حقول نصية مفردة أم تحليل JSON بالكامل إلى هيكل Spark Struct؟"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "هل بعض المهام أبطأ بكثير بشكل عشوائي بسبب مشاكل في الأجهزة أو عقد غير سليمة؟"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "الضبط المتقدم والتلميحات (Hints)",
+      "pregunta_guia": "هل يمكننا توجيه محسن Catalyst يدوياً عندما تفشل الإحصائيات؟"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "هل يجب فرض استراتيجية Join إذا خمّن المحسن حجم الجدول بشكل غير صحيح؟"
+    },
+    "max_partition_bytes": {
+      "nombre": "ضبط maxPartitionBytes",
+      "pregunta_guia": "هل نقرأ ملايين الملفات الصغيرة جداً أم كتلاً ضخمة غير قابلة للتقسيم؟"
+    }
+  },
+  "edges": {
+    "e01": "يحدد وضع المعالجة المختار نطاق زمن الاستجابة الممكن تحقيقه. لا يمكن لوضع Batch ضمان زمن استجابة أقل من دقيقة.",
+    "e02": "حجم مجموعة البيانات يفرض مباشرة إمكانية تطبيق Broadcast Join. إذا تجاوز الحد، يتم استبعاده.",
+    "e03": "إذا استوفت مجموعة البيانات حد Broadcast، فإن BHJ هو الخيار الافتراضي الأمثل.",
+    "e04": "ينتج عن توزيع المفاتيح غير المتوازن أقسام غير متساوية الحجم، مما يظهر كـ Data Skew.",
+    "e05": "يؤثر Data Skew بشدة على Sort Merge Join: حيث يركز قسم واحد معظم عبء العمل.",
+    "e06": "مع تفعيل AQE، يقوم محسن Skew Join بتقسيم الأقسام المحملة بشكل زائد أثناء وقت التشغيل.",
+    "e07": "إذا تطابق مفتاح تقسيم النافذة مع مفتاح منحرف (Skewed key)، فسيتعرض المنفذ (Executor) المقابل لحمل زائد.",
+    "e08": "أي عملية Join غير BHJ تُدخل حداً للمرحلة (Stage boundary) وعملية Shuffle كاملة.",
+    "e09": "تولد عمليات groupBy/agg بطبيعتها عملية Shuffle لجمع الصفوف المتطابقة من أقسام مختلفة.",
+    "e10": "تطلق دوال النوافذ (Window functions) عملية Shuffle لتقسيم البيانات وفرزها.",
+    "e11": "حجم البيانات بعد Shuffle يفرض العدد الأمثل للأقسام للحفاظ على كتل بحجم ~128-200MB.",
+    "e12": "يعمل AQE عند نقاط تجسيد Shuffle، حيث يضبط ديناميكياً عدد الأقسام الناتجة.",
+    "e13": "إذا كان DataFrame الوسيط مصدراً لعدة إجراءات (Actions)، فإن إعادة الحساب تستدعي الحاجة إلى الحفظ (Persist).",
+    "e14": "تدعم التنسيقات العمودية (Parquet, ORC) ميزة Projection Pushdown بشكل أصلي، بينما لا يدعمها CSV/JSON.",
+    "e15": "يعمل Pushdown الفعال على تقليص حجم البيانات المقروءة في الذاكرة، مما يخفف من قيود الحجم في المراحل اللاحقة.",
+    "e16": "يدفع Shuffle المفرط إلى الحاجة للتحكم الفعلي في الأقسام (repartition/coalesce).",
+    "e17": "قد تمنع اتفاقيات SLA الصارمة استخدام نقاط التحقق (Checkpoints - الكتابة على القرص) بسبب زمن الاستجابة الإضافي الناتج.",
+    "e18": "إعطاء الأولوية للإنتاجية (Throughput) يتطلب المزيد من الأقسام (التوازي). بينما يتطلب تقليل زمن الاستجابة مهام أقل."
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "Perjalanan Lengkap (Gambaran Umum Penuh)",
+      "description": "Peta arsitektur 49-node lengkap di seluruh 6 fase desain. Gunakan Fit View [ ] atau perbesar ke kluster mana pun untuk memeriksa keputusan dan kompromi (trade-off) lintas fase."
+    },
+    "infraestructura_cluster": {
+      "label": "Infrastruktur & Memori",
+      "description": "Fase 0: Tentukan Cluster Manager dan strategi alokasi memori sebelum menjalankan kode apa pun. Ini menentukan batas operasional."
+    },
+    "contexto": {
+      "label": "Konteks Masalah",
+      "description": "Pahami masalah bisnis terlebih dahulu. Laju kedatangan data, SLA latensi, dan mode pemrosesan menentukan semua keputusan Spark selanjutnya."
+    },
+    "datos": {
+      "label": "Karakteristik Data",
+      "description": "Ukuran dataset, distribusi (Data Skew), format penyimpanan, dan tata kelola (Catalogs & ACLs) menentukan strategi eksekusi fisik."
+    },
+    "transformaciones": {
+      "label": "Jenis Transformasi",
+      "description": "Joins, GroupBys, dan tipe data kompleks (Arrays, JSON) menentukan tata letak struktural dan biaya Shuffle dari pipeline."
+    },
+    "ejecucion": {
+      "label": "Implikasi Eksekusi",
+      "description": "Analisis DAG, dampak Shuffle, dan performa tugas (Speculative Execution) untuk memahami di mana letak hambatan (bottleneck) yang sebenarnya."
+    },
+    "optimization": {
+      "label": "Strategi Optimasi",
+      "description": "Penyetelan akhir: manajemen partisi, Caching, adaptasi runtime AQE, serta Hints/penyetelan manual."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Desain Pipeline Spark",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Konteks Masalah",
+      "pregunta_guia": "Apa yang perlu diselesaikan oleh pipeline ini dan di bawah batasan operasional apa?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "Apakah data tiba dalam batch diskrit atau sebagai aliran berkelanjutan (continuous stream)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "Berapa latensi minimum yang dapat diterima: detik (micro-batch) atau milidetik (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA dan Target Latensi",
+      "pregunta_guia": "Apakah ada SLA yang ditentukan? Berapa latensi pemrosesan maksimum yang dapat diterima?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Trade-off: Latensi vs Throughput",
+      "pregunta_guia": "Apakah saya mengoptimalkan kecepatan respons per peristiwa (latensi) atau total volume yang diproses (throughput)?"
+    },
+    "datos": {
+      "nombre": "Karakteristik Data",
+      "pregunta_guia": "Properti data mana yang membentuk strategi pemrosesan?"
+    },
+    "tamano_datos": {
+      "nombre": "Ukuran Dataset",
+      "pregunta_guia": "Berapa skala ukurannya? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Apakah Dataset Muat di Memori untuk Broadcast?",
+      "pregunta_guia": "Apakah tabel kecil muat dalam batas spark.sql.autoBroadcastJoinThreshold (default 10MB)?"
+    },
+    "distribucion_datos": {
+      "nombre": "Distribusi Data",
+      "pregunta_guia": "Apakah data seimbang di seluruh partisi atau adakah kunci yang dominan (dominant keys)?"
+    },
+    "data_skew": {
+      "nombre": "Deteksi dan Penanganan Data Skew",
+      "pregunta_guia": "Apakah ada partisi yang berukuran jauh lebih besar? Apakah ada kunci dengan kardinalitas ekstrem?"
+    },
+    "formato_datos": {
+      "nombre": "Format Penyimpanan",
+      "pregunta_guia": "Apakah format tersebut mendukung pembacaan kolumnar (columnar read), kompresi yang efisien, dan Partition Pruning?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Dapatkah filter dan pemilihan kolom didorong (pushed down) ke tingkat penyimpanan sebelum dibaca ke memori?"
+    },
+    "transformaciones": {
+      "nombre": "Jenis Transformasi",
+      "pregunta_guia": "Kategori transformasi mana yang mendominasi? Apakah itu menghasilkan Shuffle?"
+    },
+    "diseno_joins": {
+      "nombre": "Desain Join",
+      "pregunta_guia": "Strategi Join fisik mana yang meminimalkan Shuffle berdasarkan ukuran dan distribusi data?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "BHJ jika tabel kecil. SHJ jika data muat di memori. SMJ (default) jika data besar dan dapat diurutkan."
+    },
+    "agregaciones": {
+      "nombre": "Aggregations dan GroupBy",
+      "pregunta_guia": "Dapatkah agregasi dilakukan secara penuh (pre-aggregated) di dalam setiap partisi sebelum Shuffle?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate lebih cepat tetapi mengharuskan grup muat di dalam memori. Sort Aggregate aman terhadap limpahan memori (spill-safe)."
+    },
+    "operaciones_ventana": {
+      "nombre": "Operasi Window",
+      "pregunta_guia": "Apakah logika bisnis memerlukan perhitungan di atas partisi data yang diurutkan (ranking, lag, rolling avg)?"
+    },
+    "particionado_ventana": {
+      "nombre": "Strategi Window partitionBy",
+      "pregunta_guia": "Apakah kunci partisi Window menghasilkan distribusi yang seimbang atau justru memperparah Data Skew?"
+    },
+    "ejecucion": {
+      "nombre": "Implikasi Eksekusi",
+      "pregunta_guia": "Bagaimana transformasi diwujudkan dalam tahapan (Stages) DAG? Hambatan (bottleneck) apa yang dihasilkannya?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Pembentukan Shuffle (Shuffle Generation)",
+      "pregunta_guia": "Berapa banyak batas Stage (stage boundaries) yang diperkenalkan oleh pipeline? Seberapa banyak data yang berpindah melalui jaringan?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Penyetelan spark.sql.shuffle.partitions",
+      "pregunta_guia": "Apakah jumlah partisi menghasilkan blok berukuran ~100-200MB? Apakah terlalu tinggi (overhead) atau terlalu rendah (spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "Analisis DAG Stage",
+      "pregunta_guia": "Apakah DAG memiliki Stage yang redundan? Apakah DataFrame perantara digunakan kembali berkali-kali?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Apakah DataFrame yang Sama Dievaluasi Ulang di Beberapa Action?",
+      "pregunta_guia": "Jika sebuah DataFrame memicu beberapa cabang Action di DAG tanpa disimpan (persisted), DataFrame tersebut akan dihitung ulang sepenuhnya setiap kali."
+    },
+    "optimization": {
+      "nombre": "Strategi Optimasi",
+      "pregunta_guia": "Teknik mana yang berlaku untuk mengurangi Shuffle, menghindari komputasi ulang, dan mengelola memori secara efisien?"
+    },
+    "control_particiones": {
+      "nombre": "Kontrol Partisi Fisik",
+      "pregunta_guia": "Apakah ada kebutuhan untuk mendistribusikan ulang data demi penyeimbangan beban (load balancing) atau untuk mengurangi jumlah file output?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: menghasilkan Shuffle, menyeimbangkan data. Coalesce: tanpa Shuffle, hanya mengurangi partisi tanpa mendistribusikan ulang."
+    },
+    "persistencia": {
+      "nombre": "Persistence DataFrame Perantara",
+      "pregunta_guia": "Apakah layak menyimpan (materialize) DataFrame perantara ini untuk menghindari komputasi ulang yang mahal?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: cepat, mempertahankan Lineage. Checkpoint: memotong (truncate) DAG Lineage, menulis ke disk, lebih tangguh."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "Apakah AQE diaktifkan (Spark 3+)? Optimasi otomatis apa yang ditawarkannya untuk pipeline ini?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE dapat mengubah rencana eksekusi sepenuhnya saat runtime: menggabungkan partisi pasca-Shuffle, mengonversi ke Broadcast, dan memecah partisi yang mengalami Skew."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Cluster Managers",
+      "pregunta_guia": "Manajer sumber daya mana yang akan mengoordinasikan Executor dan bagaimana memori dikelola?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Pilihan enterprise klasik. Terintegrasi dengan ekosistem HDFS dan MapReduce."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Pilihan cloud-native modern. Executor dalam container Docker dan terisolasi."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Bagaimana Spark akan mengalokasikan RAM antara eksekusi dan cache penyimpanan (Storage)?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "Apakah kita perlu mengagregasi data di beberapa batch (misalnya total berjalan, sessionization)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Data Terlambat)",
+      "pregunta_guia": "Berapa lama Spark harus menunggu data yang datang terlambat sebelum membersihkan state?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Output Modes",
+      "pregunta_guia": "Bagaimana cara kita menulis hasil agregasi? Append, Update, atau Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Tata Kelola & Penemuan Data",
+      "pregunta_guia": "Bagaimana pengguna akan menemukan dataset ini dan siapa yang diizinkan untuk mengaksesnya?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Sistem Katalog (Hive vs Unity)",
+      "pregunta_guia": "Haruskah kita mendaftarkan tabel di Metastore pusat untuk akses SQL dan pelacakan Lineage?"
+    },
+    "control_acceso": {
+      "nombre": "Kontrol Akses (ACLs)",
+      "pregunta_guia": "Apakah kita memerlukan Fine-Grained Access Control (tingkat baris/kolom) atau apakah IAM tingkat penyimpanan sudah cukup?"
+    },
+    "tipos_complejos": {
+      "nombre": "Tipe Data Kompleks",
+      "pregunta_guia": "Apakah kita bekerja dengan struktur bersarang (JSON, Maps, Arrays)?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "Apakah kita meratakan array menjadi baris (explode) atau memodifikasinya secara inline (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "Parsing JSON Bersarang",
+      "pregunta_guia": "Haruskah kita mengekstrak field string tunggal atau melakukan parsing seluruh JSON menjadi Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Apakah beberapa tugas berjalan jauh lebih lambat secara acak karena masalah perangkat keras atau node yang buruk?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Penyetelan Lanjutan & Hints",
+      "pregunta_guia": "Dapatkah kita memandu Catalyst Optimizer secara manual ketika statistik gagal?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Haruskah kita memaksakan strategi Join jika optimizer salah menebak ukuran tabel?"
+    },
+    "max_partition_bytes": {
+      "nombre": "Penyetelan maxPartitionBytes",
+      "pregunta_guia": "Apakah kita membaca jutaan file berukuran sangat kecil atau potongan besar yang tidak dapat dibagi (non-splittable)?"
+    }
+  },
+  "edges": {
+    "e01": "Mode pemrosesan yang dipilih menentukan rentang latensi yang dapat dicapai. Batch tidak dapat menjamin latensi di bawah satu menit.",
+    "e02": "Ukuran dataset secara langsung menentukan apakah Broadcast Join dapat diterapkan. Di atas ambang batas, opsi ini dikesampingkan.",
+    "e03": "Jika dataset memenuhi ambang batas Broadcast, BHJ adalah pilihan default yang paling optimal.",
+    "e04": "Distribusi kunci yang tidak seimbang menghasilkan partisi berukuran tidak merata, yang bermanifestasi sebagai Data Skew.",
+    "e05": "Data Skew berdampak parah pada Sort Merge Join: satu partisi tunggal memusatkan sebagian besar beban kerja.",
+    "e06": "Dengan AQE diaktifkan, pengoptimal Skew Join memecah partisi yang kelebihan beban saat runtime.",
+    "e07": "Jika kunci partisi Window cocok dengan kunci yang mengalami Skew, Executor terkait akan mengalami kelebihan beban.",
+    "e08": "Join apa pun selain BHJ memperkenalkan batas Stage (stage boundary) dan operasi Shuffle penuh.",
+    "e09": "Operasi groupBy/agg secara inheren menghasilkan Shuffle untuk mengumpulkan baris-baris identik dari partisi yang berbeda.",
+    "e10": "Fungsi Window memicu Shuffle untuk mempartisi dan mengurutkan data.",
+    "e11": "Volume data pasca-Shuffle menentukan jumlah partisi optimal untuk mempertahankan blok berukuran ~128-200MB.",
+    "e12": "AQE bekerja pada titik materialisasi Shuffle, menyesuaikan jumlah partisi yang dihasilkan secara dinamis.",
+    "e13": "Jika sebuah DataFrame perantara menjadi sumber untuk beberapa Action, komputasi ulang memicu kebutuhan untuk melakukan Persistence.",
+    "e14": "Format kolumnar (Parquet, ORC) secara native mendukung Projection Pushdown. CSV/JSON tidak.",
+    "e15": "Pushdown yang efektif memangkas volume data yang dibaca ke dalam memori, meringankan batas ukuran di tahap hilir (downstream).",
+    "e16": "Shuffle yang berlebihan mendorong perlunya kontrol partisi fisik (Repartition/Coalesce).",
+    "e17": "SLA yang ketat dapat melarang penggunaan Checkpoint (penulisan ke disk) karena adanya tambahan latensi yang ditimbulkan.",
+    "e18": "Memprioritaskan Throughput berarti lebih banyak partisi (paralelisme). Latensi rendah membutuhkan lebih sedikit tugas (tasks)."
+  }
+}

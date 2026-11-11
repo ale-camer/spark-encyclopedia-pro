@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "Hành trình toàn diện (Tổng quan đầy đủ)",
+      "description": "Bản đồ kiến trúc hoàn chỉnh gồm 49 nút xuyên suốt 6 giai đoạn thiết kế. Sử dụng Fit View [ ] hoặc phóng to vào bất kỳ cụm nào để kiểm tra các quyết định và sự đánh đổi giữa các giai đoạn."
+    },
+    "infraestructura_cluster": {
+      "label": "Hạ tầng & Bộ nhớ",
+      "description": "Giai đoạn 0: Xác định trình quản lý cụm (Cluster Manager) và chiến lược phân bổ bộ nhớ trước khi chạy bất kỳ mã nào. Điều này xác định các giới hạn vận hành."
+    },
+    "contexto": {
+      "label": "Bối cảnh bài toán",
+      "description": "Hiểu rõ bài toán nghiệp vụ trước tiên. Tốc độ dữ liệu đến, SLA về độ trễ và chế độ xử lý sẽ quyết định mọi lựa chọn thiết kế Spark tiếp theo."
+    },
+    "datos": {
+      "label": "Đặc điểm dữ liệu",
+      "description": "Kích thước tập dữ liệu, sự phân phối (Data Skew), định dạng lưu trữ và quản trị (Catalogs & ACLs) quyết định các chiến lược thực thi vật lý."
+    },
+    "transformaciones": {
+      "label": "Các loại phép biến đổi (Transformations)",
+      "description": "Joins, GroupBys và các kiểu dữ liệu phức tạp (Arrays, JSON) định hình cấu trúc và chi phí Shuffle của toàn bộ pipeline."
+    },
+    "ejecucion": {
+      "label": "Hệ quả thực thi",
+      "description": "Phân tích DAG, tác động của Shuffle và hiệu suất tác vụ (Speculative Execution) để hiểu những điểm nghẽn (bottlenecks) thực sự nằm ở đâu."
+    },
+    "optimization": {
+      "label": "Chiến lược tối ưu hóa",
+      "description": "Tinh chỉnh cuối cùng: quản lý phân vùng (partition), Caching, thích ứng thời gian chạy với AQE và tinh chỉnh/Hints thủ công."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Thiết kế Spark Pipeline",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Bối cảnh bài toán",
+      "pregunta_guia": "Pipeline này cần giải quyết vấn đề gì và dưới những ràng buộc vận hành nào?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch so với Streaming",
+      "pregunta_guia": "Dữ liệu đến theo từng lô rời rạc (Batch) hay như một luồng liên tục (Streaming)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch so với Continuous Processing",
+      "pregunta_guia": "Độ trễ tối thiểu có thể chấp nhận được là bao nhiêu: giây (micro-batch) hay mili giây (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA và mục tiêu độ trễ",
+      "pregunta_guia": "Có các SLA được xác định trước không? Độ trễ xử lý tối đa có thể chấp nhận là bao nhiêu?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Đánh đổi: Độ trễ (Latency) so với Thông lượng (Throughput)",
+      "pregunta_guia": "Tôi nên tối ưu hóa tốc độ phản hồi trên mỗi sự kiện (Latency) hay tổng khối lượng được xử lý (Throughput)?"
+    },
+    "datos": {
+      "nombre": "Đặc điểm dữ liệu",
+      "pregunta_guia": "Những thuộc tính nào của dữ liệu định hình chiến lược xử lý?"
+    },
+    "tamano_datos": {
+      "nombre": "Kích thước tập dữ liệu",
+      "pregunta_guia": "Quy mô dữ liệu ở mức nào? MB, GB hay TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Tập dữ liệu có vừa bộ nhớ để Broadcast không?",
+      "pregunta_guia": "Bảng nhỏ có nằm trong ngưỡng spark.sql.autoBroadcastJoinThreshold (mặc định 10MB) không?"
+    },
+    "distribucion_datos": {
+      "nombre": "Phân phối dữ liệu",
+      "pregunta_guia": "Dữ liệu có được cân bằng giữa các phân vùng (partitions) hay có các khóa chiếm ưu thế (dominant keys)?"
+    },
+    "data_skew": {
+      "nombre": "Phát hiện và xử lý Data Skew",
+      "pregunta_guia": "Có những phân vùng nào lớn hơn hẳn phần còn lại không? Có các khóa với độ lệch (cardinality) cực đoan không?"
+    },
+    "formato_datos": {
+      "nombre": "Định dạng lưu trữ",
+      "pregunta_guia": "Định dạng có hỗ trợ đọc theo cột (columnar read), nén hiệu quả và cắt tỉa phân vùng (Partition Pruning) không?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Có thể đẩy các bộ lọc và việc chọn cột xuống tầng lưu trữ trước khi đọc vào bộ nhớ không?"
+    },
+    "transformaciones": {
+      "nombre": "Các loại phép biến đổi (Transformations)",
+      "pregunta_guia": "Nhóm phép biến đổi nào chiếm ưu thế? Nó có sinh ra Shuffle không?"
+    },
+    "diseno_joins": {
+      "nombre": "Thiết kế Join",
+      "pregunta_guia": "Chiến lược Join vật lý nào giảm thiểu Shuffle nhất dựa trên kích thước và phân phối dữ liệu?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash so với Shuffle Hash so với Sort Merge Join",
+      "pregunta_guia": "Dùng BHJ nếu bảng nhỏ. SHJ nếu dữ liệu vừa trong bộ nhớ. SMJ (mặc định) nếu dữ liệu lớn và có thể sắp xếp."
+    },
+    "agregaciones": {
+      "nombre": "Aggregations và GroupBy",
+      "pregunta_guia": "Phép tổng hợp có thể được tổng hợp sơ bộ (pre-aggregated) hoàn toàn bên trong mỗi phân vùng trước khi Shuffle không?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate so với Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate nhanh hơn nhưng yêu cầu nhóm dữ liệu phải vừa trong bộ nhớ. Sort Aggregate an toàn khi tràn bộ nhớ (spill-safe)."
+    },
+    "operaciones_ventana": {
+      "nombre": "Các phép toán Window",
+      "pregunta_guia": "Logic nghiệp vụ có yêu cầu tính toán trên các phân vùng dữ liệu đã sắp xếp (ranking, lag, rolling avg) không?"
+    },
+    "particionado_ventana": {
+      "nombre": "Chiến lược Window partitionBy",
+      "pregunta_guia": "Khóa phân vùng Window tạo ra sự phân phối cân bằng hay làm trầm trọng thêm tình trạng Data Skew?"
+    },
+    "ejecucion": {
+      "nombre": "Hệ quả thực thi",
+      "pregunta_guia": "Các phép biến đổi được hiện thực hóa thành các Stage trong DAG như thế nào? Chúng tạo ra những điểm nghẽn nào?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Sinh Shuffle (Shuffle Generation)",
+      "pregunta_guia": "Pipeline tạo ra bao nhiêu ranh giới Stage (stage boundaries)? Có bao nhiêu dữ liệu phải di chuyển qua mạng?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Tinh chỉnh spark.sql.shuffle.partitions",
+      "pregunta_guia": "Số lượng phân vùng có tạo ra các khối ~100-200MB không? Nó quá cao (gây overhead) hay quá thấp (gây spill)?"
+    },
+    "analisis_dag": {
+      "nombre": "Phân tích DAG Stage",
+      "pregunta_guia": "DAG có chứa các Stage dư thừa không? Một DataFrame trung gian có được tái sử dụng nhiều lần không?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Cùng một DataFrame có bị tính toán lại trong nhiều Action không?",
+      "pregunta_guia": "Nếu một DataFrame kích hoạt nhiều nhánh Action trong DAG mà không được lưu giữ (persist), nó sẽ bị tính toán lại từ đầu mỗi lần."
+    },
+    "optimization": {
+      "nombre": "Chiến lược tối ưu hóa",
+      "pregunta_guia": "Những kỹ thuật nào được áp dụng để giảm Shuffle, tránh tính toán lại và quản lý bộ nhớ hiệu quả?"
+    },
+    "control_particiones": {
+      "nombre": "Kiểm soát phân vùng vật lý",
+      "pregunta_guia": "Có cần phân phối lại dữ liệu để cân bằng tải hoặc giảm số lượng tệp đầu ra không?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition so với Coalesce",
+      "pregunta_guia": "Repartition: sinh ra Shuffle, giúp cân bằng dữ liệu. Coalesce: không Shuffle, chỉ giảm số phân vùng mà không phân phối lại."
+    },
+    "persistencia": {
+      "nombre": "Lưu giữ (Persistence) DataFrame trung gian",
+      "pregunta_guia": "Có đáng để hiện thực hóa (materialize) DataFrame trung gian này nhằm tránh chi phí tính toán lại đắt đỏ không?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache so với Checkpoint",
+      "pregunta_guia": "Cache: nhanh, giữ lại Lineage. Checkpoint: cắt ngắn DAG Lineage, ghi xuống đĩa, an toàn và bền vững hơn."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "AQE đã được bật chưa (Spark 3+)? Nó cung cấp những tối ưu hóa tự động nào cho pipeline này?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE có thể thay đổi hoàn toàn kế hoạch thực thi tại thời điểm chạy (runtime): gộp phân vùng sau Shuffle, chuyển đổi sang Broadcast và tách các phân vùng bị Skew."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Trình quản lý cụm (Cluster Managers)",
+      "pregunta_guia": "Trình quản lý tài nguyên nào sẽ điều phối các Executor và bộ nhớ được quản lý ra sao?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Lựa chọn doanh nghiệp truyền thống. Tích hợp chặt chẽ với hệ sinh thái HDFS và MapReduce."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Lựa chọn đám mây hiện đại (cloud-native). Các Executor chạy trên Docker và có tính cô lập cao."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Spark sẽ phân bổ RAM giữa bộ nhớ thực thi (Execution) và bộ nhớ lưu trữ (Storage cache) như thế nào?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful so với Stateless Streaming",
+      "pregunta_guia": "Chúng ta có cần tổng hợp dữ liệu qua nhiều lô (ví dụ: tổng lũy kế, phân phiên - sessionization) không?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Dữ liệu đến muộn)",
+      "pregunta_guia": "Spark nên đợi dữ liệu đến muộn trong bao lâu trước khi dọn dẹp trạng thái (state)?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Các chế độ đầu ra (Output Modes)",
+      "pregunta_guia": "Chúng ta ghi kết quả tổng hợp bằng cách nào? Append, Update hay Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Quản trị & Khám phá dữ liệu",
+      "pregunta_guia": "Người dùng sẽ khám phá tập dữ liệu này bằng cách nào và ai được phép truy cập nó?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Hệ thống Catalog (Hive so với Unity)",
+      "pregunta_guia": "Chúng ta có nên đăng ký các bảng vào một Metastore trung tâm để truy cập SQL và theo dõi Lineage không?"
+    },
+    "control_acceso": {
+      "nombre": "Kiểm soát truy cập (ACLs)",
+      "pregunta_guia": "Chúng ta cần Kiểm soát truy cập chi tiết (Fine-Grained Access Control ở cấp hàng/cột) hay IAM ở cấp lưu trữ là đủ?"
+    },
+    "tipos_complejos": {
+      "nombre": "Các kiểu dữ liệu phức tạp",
+      "pregunta_guia": "Chúng ta có đang làm việc với các cấu trúc lồng nhau (JSON, Maps, Arrays) không?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode so với Transform",
+      "pregunta_guia": "Chúng ta làm phẳng mảng thành các hàng (explode) hay sửa đổi chúng trực tiếp (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "Phân tích cú pháp JSON lồng nhau",
+      "pregunta_guia": "Chúng ta nên trích xuất từng trường chuỗi đơn lẻ hay phân tích toàn bộ JSON thành một Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Có một số tác vụ ngẫu nhiên chạy chậm hơn rất nhiều do sự cố phần cứng hoặc nút mạng (node) kém không?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Tinh chỉnh nâng cao & Hints",
+      "pregunta_guia": "Chúng ta có thể hướng dẫn bộ tối ưu hóa Catalyst một cách thủ công khi dữ liệu thống kê không chính xác không?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Chúng ta có nên ép buộc một chiến lược Join nếu bộ tối ưu hóa đoán sai kích thước bảng không?"
+    },
+    "max_partition_bytes": {
+      "nombre": "Tinh chỉnh maxPartitionBytes",
+      "pregunta_guia": "Chúng ta đang đọc hàng triệu tệp nhỏ li ti hay những khối dữ liệu khổng lồ không thể chia nhỏ?"
+    }
+  },
+  "edges": {
+    "e01": "Chế độ xử lý được chọn sẽ xác định phạm vi độ trễ có thể đạt được. Xử lý Batch không thể đảm bảo độ trễ dưới một phút.",
+    "e02": "Kích thước tập dữ liệu quyết định trực tiếp việc có áp dụng được Broadcast Join hay không. Nếu vượt ngưỡng, phương án này sẽ bị loại bỏ.",
+    "e03": "Nếu tập dữ liệu đáp ứng ngưỡng Broadcast, BHJ là lựa chọn mặc định tối ưu nhất.",
+    "e04": "Sự phân phối khóa mất cân bằng sẽ tạo ra các phân vùng có kích thước không đều nhau, biểu hiện thành Data Skew.",
+    "e05": "Data Skew tác động nghiêm trọng đến Sort Merge Join: một phân vùng duy nhất phải gánh phần lớn khối lượng công việc.",
+    "e06": "Khi bật AQE, bộ tối ưu hóa Skew Join sẽ tự động chia nhỏ các phân vùng bị quá tải ngay trong thời gian chạy (runtime).",
+    "e07": "Nếu khóa phân vùng của Window trùng với một khóa bị lệch (skewed key), Executor tương ứng sẽ bị quá tải.",
+    "e08": "Bất kỳ phép Join nào ngoài BHJ đều tạo ra một ranh giới Stage (stage boundary) và một hoạt động Shuffle toàn phần.",
+    "e09": "Các phép toán groupBy/agg bản chất luôn sinh ra Shuffle để gom các hàng có cùng khóa từ những phân vùng khác nhau.",
+    "e10": "Các hàm Window kích hoạt Shuffle để phân vùng và sắp xếp dữ liệu.",
+    "e11": "Khối lượng dữ liệu sau Shuffle quyết định số lượng phân vùng tối ưu nhằm duy trì kích thước mỗi khối khoảng ~128-200MB.",
+    "e12": "AQE hoạt động tại các điểm hiện thực hóa Shuffle, tự động điều chỉnh linh hoạt số lượng phân vùng đầu ra.",
+    "e13": "Nếu một DataFrame trung gian là nguồn cho nhiều Action, việc phải tính toán lại sẽ dẫn đến nhu cầu cần lưu giữ (persist) nó.",
+    "e14": "Các định dạng lưu trữ theo cột (Parquet, ORC) hỗ trợ tự nhiên Projection Pushdown. CSV/JSON thì không.",
+    "e15": "Pushdown hiệu quả giúp cắt giảm lượng dữ liệu cần đọc vào bộ nhớ, giảm bớt áp lực về giới hạn kích thước ở các bước xử lý tiếp theo.",
+    "e16": "Shuffle quá mức thúc đẩy nhu cầu cần kiểm soát phân vùng vật lý (Repartition/Coalesce).",
+    "e17": "Các SLA nghiêm ngặt có thể không cho phép dùng Checkpoint (ghi xuống đĩa) do làm tăng thêm độ trễ.",
+    "e18": "Ưu tiên thông lượng (Throughput) đồng nghĩa với việc cần nhiều phân vùng hơn (tăng độ song song). Ưu tiên độ trễ (Latency) đòi hỏi ít tác vụ hơn."
+  }
+}

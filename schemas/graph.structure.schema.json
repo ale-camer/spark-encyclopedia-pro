@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spark-learning.local/schemas/graph.structure.schema.json",
+  "title": "Spark Pipeline Architecture Invariant Graph Structure",
+  "description": "Language-invariant structural definition for the 49 nodes and 18 cross-phase links.",
+  "type": "object",
+  "required": ["nodos", "enlaces_transversales"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "nodos": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "nivel",
+          "subdecisiones",
+          "dependencias_previas"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "nombre": { "type": "string" },
+          "tipo": {
+            "type": "string",
+            "enum": ["phase", "decision", "problem", "concept", "optimization"]
+          },
+          "nivel": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "pregunta_guia": { "type": "string" },
+          "subdecisiones": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "dependencias_previas": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "codigo_pyspark": { "type": "string" },
+          "salida_consola": { "type": "string" },
+          "diagrama_mermaid": { "type": "string" },
+          "reference_section_id": { "type": "string" }
+        }
+      }
+    },
+    "enlaces_transversales": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "origen", "destino", "tipo"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^e[0-9]+$" },
+          "origen": { "type": "string" },
+          "destino": { "type": "string" },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "causa_efecto",
+              "restriccion",
+              "mitigacion",
+              "habilitador",
+              "determinante",
+              "disparador",
+              "riesgo_ejecucion"
+            ]
+          },
+          "descripcion": { "type": "string" }
+        }
+      }
+    }
+  }
+}

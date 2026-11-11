@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "Tam Yolculuk (Genel Bakış)",
+      "description": "Tüm 6 tasarım aşamasını kapsayan 49 düğümlü eksiksiz mimari haritası. Kararları ve aşamalar arası ödünleşimleri incelemek için Görünümü Sığdır [ ] seçeneğini kullanın veya herhangi bir kümeye yakınlaşın."
+    },
+    "infraestructura_cluster": {
+      "label": "Altyapı ve Bellek",
+      "description": "Aşama 0: Herhangi bir kodu çalıştırmadan önce küme yöneticisini (Cluster Manager) ve bellek tahsis stratejisini tanımlayın. Bu, operasyonel sınırları belirler."
+    },
+    "contexto": {
+      "label": "Problem Bağlamı",
+      "description": "Önce iş problemini anlayın. Veri geliş hızı, gecikme SLA'ları ve işleme modu sonraki tüm Spark kararlarını şekillendirir."
+    },
+    "datos": {
+      "label": "Veri Özellikleri",
+      "description": "Veri kümesi boyutu, dağılım (skew), depolama formatı ve yönetişim (Catalogs ve ACL'ler) fiziksel yürütme stratejilerini belirler."
+    },
+    "transformaciones": {
+      "label": "Dönüşüm Türleri",
+      "description": "Join'ler, GroupBy'lar ve karmaşık veri tipleri (Arrays, JSON) veri hattının yapısal düzenini ve Shuffle maliyetini tanımlar."
+    },
+    "ejecucion": {
+      "label": "Yürütme Etkileri",
+      "description": "Gerçek darboğazların nerede olduğunu anlamak için DAG yapısını, Shuffle etkisini ve görev performansını (Speculative Execution) analiz edin."
+    },
+    "optimization": {
+      "label": "Optimizasyon Stratejileri",
+      "description": "Son ince ayarlar: bölüm (partition) yönetimi, önbellekleme (caching), AQE çalışma zamanı adaptasyonu ve manuel ipuçları (Hints) / ayarlamalar."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Spark Veri Hattı Tasarımı",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Problem Bağlamı",
+      "pregunta_guia": "Bu veri hattının hangi operasyonel kısıtlamalar altında neyi çözmesi gerekiyor?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch vs Streaming",
+      "pregunta_guia": "Veriler ayrık yığınlar (Batch) halinde mi yoksa sürekli bir akış (Streaming) olarak mı geliyor?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch vs Continuous Processing",
+      "pregunta_guia": "Kabul edilebilir minimum gecikme nedir: saniyeler (micro-batch) mi yoksa milisaniyeler (continuous) mi?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA'lar ve Gecikme Hedefleri",
+      "pregunta_guia": "Tanımlanmış SLA'lar var mı? Kabul edilebilir maksimum işleme gecikmesi nedir?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Ödünleşim: Gecikme (Latency) vs İş Hacmi (Throughput)",
+      "pregunta_guia": "Olay başına yanıt hızını (latency) mı yoksa işlenen toplam hacmi (throughput) mi optimize etmeliyim?"
+    },
+    "datos": {
+      "nombre": "Veri Özellikleri",
+      "pregunta_guia": "Hangi veri özellikleri işleme stratejisini şekillendirir?"
+    },
+    "tamano_datos": {
+      "nombre": "Veri Kümesi Boyutu",
+      "pregunta_guia": "Büyüklük mertebesi nedir? MB, GB, TB?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Veri Kümesi Broadcast İçin Belleğe Sığıyor mu?",
+      "pregunta_guia": "Küçük tablo spark.sql.autoBroadcastJoinThreshold sınırına (varsayılan 10MB) sığıyor mu?"
+    },
+    "distribucion_datos": {
+      "nombre": "Veri Dağılımı",
+      "pregunta_guia": "Veriler bölümler (partitions) arasında dengeli mi yoksa baskın anahtarlar var mı?"
+    },
+    "data_skew": {
+      "nombre": "Data Skew Tespiti ve Yönetimi",
+      "pregunta_guia": "Önemli ölçüde daha büyük bölümler var mı? Aşırı kardinaliteye sahip anahtarlar bulunuyor mu?"
+    },
+    "formato_datos": {
+      "nombre": "Depolama Formatı",
+      "pregunta_guia": "Format sütunsal okumayı (columnar read), verimli sıkıştırmayı ve Partition Pruning'i destekliyor mu?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Filtreler ve sütun seçimleri belleğe okunmadan önce depolama katmanına indirgenebilir (pushdown) mi?"
+    },
+    "transformaciones": {
+      "nombre": "Dönüşüm Türleri",
+      "pregunta_guia": "Hangi dönüşüm kategorisi baskın? Shuffle üretiyor mu?"
+    },
+    "diseno_joins": {
+      "nombre": "Join Tasarımı",
+      "pregunta_guia": "Veri boyutu ve dağılımı göz önüne alındığında hangi fiziksel Join stratejisi Shuffle'ı en aza indirir?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "Tablo küçükse BHJ. Veri belleğe sığıyorsa SHJ. Veri büyük ve sıralanabilir ise SMJ (varsayılan)."
+    },
+    "agregaciones": {
+      "nombre": "Toplulaştırmalar (Aggregations) ve GroupBy",
+      "pregunta_guia": "Toplulaştırma işlemi Shuffle öncesinde her bölüm içinde tamamen ön-toplulaştırılabilir mi?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate daha hızlıdır ancak grubun belleğe sığmasını gerektirir. Sort Aggregate diske taşmaya karşı güvenlidir (spill-safe)."
+    },
+    "operaciones_ventana": {
+      "nombre": "Pencere İşlemleri (Window Operations)",
+      "pregunta_guia": "İş mantığı sıralı veri bölümleri üzerinde hesaplamalar (sıralama, lag, hareketli ortalama) gerektiriyor mu?"
+    },
+    "particionado_ventana": {
+      "nombre": "Window partitionBy Stratejisi",
+      "pregunta_guia": "Pencere bölümleme anahtarı dengeli bir dağılım mı üretiyor yoksa Data Skew'u mu artırıyor?"
+    },
+    "ejecucion": {
+      "nombre": "Yürütme Etkileri",
+      "pregunta_guia": "Dönüşümler DAG aşamalarında (Stages) nasıl somutlaşır? Hangi darboğazları oluştururlar?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Shuffle Üretimi",
+      "pregunta_guia": "Veri hattı kaç aşama sınırı (Stage boundary) ekliyor? Ağ üzerinden ne kadar veri taşınıyor?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "spark.sql.shuffle.partitions Ayarı",
+      "pregunta_guia": "Bölüm sayısı ~100-200MB bloklar sağlıyor mu? Çok yüksek (ek yük) veya çok düşük (diske taşma / spill) mü?"
+    },
+    "analisis_dag": {
+      "nombre": "DAG Aşama Analizi",
+      "pregunta_guia": "DAG içinde gereksiz aşamalar var mı? Ara bir DataFrame birden fazla kez yeniden kullanılıyor mu?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Aynı DataFrame Birden Fazla Action İçinde Yeniden Hesaplanıyor mu?",
+      "pregunta_guia": "Bir DataFrame kalıcı hale getirilmeden (persist) DAG içinde birden fazla Action dalını tetiklerse her seferinde baştan hesaplanır."
+    },
+    "optimization": {
+      "nombre": "Optimizasyon Stratejileri",
+      "pregunta_guia": "Shuffle'ı azaltmak, yeniden hesaplamayı önlemek ve belleği verimli yönetmek için hangi teknikler uygulanır?"
+    },
+    "control_particiones": {
+      "nombre": "Fiziksel Bölüm (Partition) Kontrolü",
+      "pregunta_guia": "Yük dengeleme veya çıktı dosyası sayısını azaltmak için verileri yeniden dağıtma ihtiyacı var mı?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: Shuffle üretir, veriyi dengeler. Coalesce: Shuffle yapmaz, yeniden dağıtmadan yalnızca bölüm sayısını azaltır."
+    },
+    "persistencia": {
+      "nombre": "Ara DataFrame Kalıcılığı (Persistence)",
+      "pregunta_guia": "Maliyetli yeniden hesaplamaları önlemek için bu ara DataFrame'i bellekte/diskte tutmaya değer mi?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: hızlıdır, soy ağacını (lineage) korur. Checkpoint: DAG soy ağacını keser, diske yazar, daha sağlamdır."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "AQE etkin mi (Spark 3+)? Bu veri hattı için hangi otomatik optimizasyonları sunuyor?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE çalışma zamanında yürütme planını tamamen değiştirebilir: Shuffle sonrası bölümleri birleştirir, Broadcast'e dönüştürür ve çarpık (skewed) bölümleri böler."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Küme Yöneticileri (Cluster Managers)",
+      "pregunta_guia": "Yürütücüleri (executors) hangi kaynak yöneticisi koordine edecek ve bellek nasıl yönetilecek?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Klasik kurumsal tercih. HDFS ve MapReduce ekosistemleriyle entegredir."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Modern bulut-yerel (cloud-native) tercih. Dockerize edilmiş yürütücüler ve izolasyon."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Spark, RAM'i yürütme (Execution) ve depolama önbellekleri (Storage) arasında nasıl paylaştıracak?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "Verileri birden fazla yığın (batch) boyunca toplulaştırmamız gerekiyor mu (ör. hareketli toplamlar, oturumlandırma)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Geç Gelen Veriler)",
+      "pregunta_guia": "Spark durumu (state) temizlemeden önce geç gelen veriler için ne kadar beklemeli?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Çıktı Modları (Output Modes)",
+      "pregunta_guia": "Toplulaştırılmış sonuçları nasıl yazarız? Append, Update veya Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Veri Yönetişimi ve Keşif (Data Governance)",
+      "pregunta_guia": "Kullanıcılar bu veri kümesini nasıl keşfedecek ve ona kimlerin erişmesine izin veriliyor?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Katalog Sistemi (Hive vs Unity)",
+      "pregunta_guia": "SQL erişimi ve soy ağacı (lineage) takibi için tabloları merkezi bir metastore'a kaydetmeli miyiz?"
+    },
+    "control_acceso": {
+      "nombre": "Erişim Kontrolü (ACLs)",
+      "pregunta_guia": "Hassas Erişim Kontrolüne (satır/sütun düzeyinde FGAC) ihtiyacımız var mı yoksa depolama düzeyinde IAM yeterli mi?"
+    },
+    "tipos_complejos": {
+      "nombre": "Karmaşık Veri Tipleri",
+      "pregunta_guia": "İç içe geçmiş yapılarla (JSON, Maps, Arrays) çalışıyor muyuz?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "Dizileri satırlara mı açıyoruz (explode) yoksa satır içinde mi değiştiriyoruz (transform SQL HOF)?"
+    },
+    "extraccion_json": {
+      "nombre": "İç İçe JSON Ayrıştırma",
+      "pregunta_guia": "Tekil metin alanlarını mı çıkarmalıyız yoksa tüm JSON'u bir Spark Struct yapısına mı ayrıştırmalıyız?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Bazı görevler donanım sorunları veya arızalı düğümler nedeniyle rastgele çok daha yavaş mı çalışıyor?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Gelişmiş Ayarlama ve Hints",
+      "pregunta_guia": "İstatistikler yetersiz kaldığında Catalyst optimizer'ı manuel olarak yönlendirebilir miyiz?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Optimizer tablo boyutunu yanlış tahmin ederse bir Join stratejisini zorlamalı mıyız?"
+    },
+    "max_partition_bytes": {
+      "nombre": "maxPartitionBytes Ayarı",
+      "pregunta_guia": "Milyonlarca küçük dosya mı yoksa devasa bölünemez bloklar mı okuyoruz?"
+    }
+  },
+  "edges": {
+    "e01": "Seçilen işleme modu ulaşılabilir gecikme aralığını belirler. Batch modu dakika altı gecikmeleri garanti edemez.",
+    "e02": "Veri kümesi boyutu Broadcast Join'in uygulanıp uygulanamayacağını doğrudan belirler. Eşiğin üzerindeyse elenir.",
+    "e03": "Veri kümesi Broadcast eşiğini karşılıyorsa BHJ varsayılan en uygun seçimdir.",
+    "e04": "Dengesiz bir anahtar dağılımı, eşit olmayan boyutlarda bölümler üreterek Data Skew olarak ortaya çıkar.",
+    "e05": "Data Skew, Sort Merge Join üzerinde ağır etki yapar: tek bir bölüm iş yükünün çoğunu üzerinde toplar.",
+    "e06": "AQE etkinleştirildiğinde Skew Join iyileştiricisi aşırı yüklü bölümleri çalışma zamanında böler.",
+    "e07": "Bir pencere bölümleme anahtarı çarpık (skewed) bir anahtarla eşleşirse ilgili yürütücü (executor) aşırı yüklenir.",
+    "e08": "BHJ dışındaki herhangi bir Join, bir aşama sınırı (Stage boundary) ve tam bir Shuffle işlemi başlatır.",
+    "e09": "groupBy/agg işlemleri, farklı bölümlerdeki aynı satırları bir araya getirmek için doğası gereği Shuffle üretir.",
+    "e10": "Pencere fonksiyonları (Window functions) verileri bölümlemek ve sıralamak için Shuffle tetikler.",
+    "e11": "Shuffle sonrası veri hacmi, ~128-200MB blokları korumak için gereken ideal bölüm sayısını belirler.",
+    "e12": "AQE, Shuffle somutlaştırma noktalarında devreye girerek ortaya çıkan bölüm sayısını dinamik olarak ayarlar.",
+    "e13": "Bir ara DataFrame birden fazla Action için kaynak ise yeniden hesaplama kalıcılık (persist) ihtiyacını doğurur.",
+    "e14": "Sütunsal formatlar (Parquet, ORC) Projection Pushdown'ı doğal olarak destekler. CSV/JSON desteklemez.",
+    "e15": "Etkili Pushdown belleğe okunan veri hacmini kırparak sonraki aşamalardaki boyut sınırlarını rahatlatır.",
+    "e16": "Aşırı Shuffle, fiziksel bölüm kontrolü (repartition/coalesce) ihtiyacını doğurur.",
+    "e17": "Katı SLA'lar, getirdiği ek gecikme nedeniyle Checkpoint (diske yazma) kullanımını engelleyebilir.",
+    "e18": "İş hacmine (throughput) öncelik vermek daha fazla bölüm (paralellik) demektir. Düşük gecikme daha az görev gerektirir."
+  }
+}

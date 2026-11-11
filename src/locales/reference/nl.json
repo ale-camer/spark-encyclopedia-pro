@@ -1,0 +1,301 @@
+{
+  "sections": {
+    "joins": {
+      "title": "Join-typen",
+      "description": "Alle join-strategieën die beschikbaar zijn in PySpark. Inzicht in het gedrag van elk type, de logica voor rijselectie en de fysieke uitvoering is cruciaal voor correcte en goed presterende pipelines."
+    },
+    "window_functions": {
+      "title": "Window-functies",
+      "description": "Geavanceerde analytische bewerkingen die waarden berekenen over een reeks rijen die gerelateerd zijn aan de huidige rij. Omvat ranking, offsets en voortschrijdende aggregaties."
+    },
+    "aggregations": {
+      "title": "Aggregaties",
+      "description": "Hoe Spark samenvattende statistieken over groepen berekent. Het begrijpen van Hash vs Sort Aggregate en hoe groepering de shuffle beïnvloedt, is essentieel voor grootschalige data."
+    },
+    "storage_and_pushdown": {
+      "title": "Opslag & Pushdown",
+      "description": "Hoe de data-indeling op schijf de prestaties van Spark beïnvloedt. Geoptimaliseerde formaten (Parquet/Delta) stellen Spark in staat alleen de benodigde data te lezen."
+    },
+    "persistence_and_caching": {
+      "title": "Persistentie & Caching",
+      "description": "Hoe je tussentijdse DataFrames hergebruikt zonder de volledige lineage opnieuw te berekenen. Cruciaal voor iteratieve algoritmen en meerdere actions."
+    },
+    "aqe_optimizations": {
+      "title": "Kernoptimalisatie & AQE",
+      "description": "Hoe Spark zijn uitvoeringsplan tijdens runtime aanpast op basis van werkelijke datastatistieken. Adaptive Query Execution (AQE) is de grootste prestatieverbetering in Modern Spark."
+    },
+    "infrastructure": {
+      "title": "Infrastructuur & Deployment",
+      "description": "Hoe Spark verbinding maakt met cluster managers en de levenscyclus van applicaties beheert. Dit vormt het fundament van elke Spark-job."
+    },
+    "memory_management": {
+      "title": "Unified Memory Management",
+      "description": "Hoe Spark het executor-RAM verdeelt tussen berekeningen (Execution) en cache (Storage). Spark 3.x gebruikt hiervoor een uniforme aanpak."
+    },
+    "structured_streaming": {
+      "title": "Structured Streaming",
+      "description": "Geavanceerde concepten voor het betrouwbaar verwerken van datastromen, het beheren van status (state) en het omgaan met laat binnenkomende records die niet op volgorde staan."
+    },
+    "data_governance": {
+      "title": "Data Governance & Beveiliging",
+      "description": "Hoe Spark integreert met Catalogs om data discovery, schema-afdwinging en fijnmazige toegangscontrole te bieden."
+    },
+    "complex_types": {
+      "title": "Complexe Datatypen",
+      "description": "Werken met niet-scalaire data zoals Arrays, Structs, Maps en ruwe JSON-strings. Essentieel voor moderne API- en NoSQL-databronnen."
+    },
+    "execution_internals": {
+      "title": "Uitvoerings- & Shuffle-internals",
+      "description": "Onder de motorkap van de Spark Execution Engine. Inzicht in Tungsten, geheugenbeheer en task speculation."
+    },
+    "optimizations_extra": {
+      "title": "Geavanceerde Optimalisatie-tuning",
+      "description": "Handmatige knoppen om Spark af te stellen wanneer automatische mechanismen (zoals AQE) niet volstaan of wanneer statistieken ontbreken."
+    }
+  },
+  "entries": {
+    "inner_join": {
+      "title": "Inner Join",
+      "subtitle": "Retourneert alleen overeenkomende rijen van beide kanten",
+      "description": "Het meest voorkomende join-type. Retourneert rijen waarvan de join-sleutel in BEIDE DataFrames bestaat. Rijen aan een van beide kanten zonder match aan de andere kant worden volledig uitgesloten. In SQL: de klassieke JOIN of INNER JOIN.",
+      "when_to_use": "Gebruik dit wanneer je alleen geïnteresseerd bent in records die een bijbehorende match hebben. Voorbeeld: bestellingen met een bijbehorende klant, transacties met een bijbehorend product. Als een record geen match heeft, wil je het niet in het resultaat.",
+      "edge_cases": [
+        "NULL-sleutels matchen nooit — rijen met NULL op de join-sleutel worden uitgesloten van het resultaat, zelfs als beide kanten NULL hebben.",
+        "Dubbele sleutels aan de rechterkant zorgen voor een Cartesisch product voor die sleutels.",
+        "Inner join op meerdere kolommen: df1.join(df2, on=['key1', 'key2'], how='inner')"
+      ]
+    },
+    "left_outer_join": {
+      "title": "Left Outer Join",
+      "subtitle": "Alle rijen van links, overeenkomende rijen van rechts",
+      "description": "Retourneert ALLE rijen uit het linker DataFrame, plus de overeenkomende rij van rechts wanneer er een match is. Als er rechts geen match is, worden de kolommen van de rechterkant gevuld met NULL. In SQL ook wel LEFT JOIN genoemd.",
+      "when_to_use": "Gebruik dit wanneer het linker DataFrame je 'source of truth' is en je het wilt verrijken met optionele data van rechts. Voorbeeld: haal alle klanten en hun laatste bestelling op (als ze die hebben). Klanten zonder bestellingen worden nog steeds getoond.",
+      "edge_cases": [
+        "Om records ZONDER match aan de rechterkant te vinden: filter na de join op rijen waar een kolom van de rechterkant NULL is.",
+        "df1.join(df2, 'key', 'left').filter(df2['col'].isNull()) — vindt niet-gematchte linker rijen.",
+        "Als de rechterkant dubbele sleutels bevat, worden linker rijen die matchen gedupliceerd."
+      ]
+    },
+    "right_outer_join": {
+      "title": "Right Outer Join",
+      "subtitle": "Alle rijen van rechts, overeenkomende rijen van links",
+      "description": "Spiegelbeeld van Left Outer Join. Retourneert ALLE rijen uit het rechter DataFrame, met NULL voor niet-gematchte linker kolommen. Minder gebruikelijk dan LEFT — meestal kun je de DataFrames omdraaien en LEFT gebruiken, wat intuïtiever is.",
+      "when_to_use": "Gebruik dit wanneer het rechter DataFrame de leidende bron is. In de praktijk is het omdraaien van DataFrames en het gebruiken van een left join meestal overzichtelijker en makkelijker te volgen.",
+      "edge_cases": [
+        "Equivalent aan: users.join(orders, 'user_id', 'left') — right join is zelden echt nodig.",
+        "Opvulling met NULL gebeurt in de kolommen aan de LINKERKANT voor niet-gematchte rechter rijen."
+      ]
+    },
+    "full_outer_join": {
+      "title": "Full Outer Join",
+      "subtitle": "Alle rijen van beide kanten, NULLs waar geen match is",
+      "description": "Retourneert ALLE rijen uit BEIDE DataFrames. Rijen die een match hebben worden gecombineerd. Rijen zonder match aan de andere kant krijgen NULL ingevuld voor de ontbrekende kolommen. In SQL ook wel FULL JOIN of FULL OUTER JOIN genoemd.",
+      "when_to_use": "Gebruik voor datareconciliatie: het vergelijken van twee bronnen om te zien wat wel in de ene zit maar niet in de andere, of wat in beide voorkomt. Veelgebruikt in ETL-pipelines voor wijzigingsdetectie (SCD Type 2).",
+      "edge_cases": [
+        "Full outer join is kostbaar — het kan geen Broadcast Join-strategie gebruiken en resulteert altijd in een volledige shuffle.",
+        "Om rijen ALLEEN in A te vinden: result.filter(result['name_b'].isNull())",
+        "Om rijen ALLEEN in B te vinden: result.filter(result['name_a'].isNull())"
+      ]
+    },
+    "cross_join": {
+      "title": "Cross Join (Cartesisch Product)",
+      "subtitle": "Elke rij links gekoppeld aan elke rij rechts",
+      "description": "Retourneert het Cartesisch product: elke rij van het linker DataFrame gekoppeld aan ELKE rij van het rechter DataFrame. Als links M rijen heeft en rechts N rijen, heeft het resultaat M×N rijen. Er is geen join-sleutel nodig. Extreem kostbaar — gebruik met uiterste voorzichtigheid.",
+      "when_to_use": "Gebruik om alle combinaties van twee kleine DataFrames te genereren. Gebruikelijk voor: het genereren van alle datum-productcombinaties voor een rapportagesjabloon, of het vergelijken van elk record met elk ander record. ALLEEN gebruiken op kleine datasets.",
+      "edge_cases": [
+        "Als links=1M rijen en rechts=1M rijen → resultaat = 1 BILJOEN rijen. Controleer altijd eerst de groottes.",
+        "Spark vereist spark.sql.crossJoin.enabled=true voor impliciete cross joins als veiligheidsmaatregel.",
+        "Prestaties: gebruikt de fysieke operator BroadcastNestedLoopJoin of CartesianProduct — geen hashtabel."
+      ]
+    },
+    "left_semi_join": {
+      "title": "Left Semi Join",
+      "subtitle": "Retourneert linker rijen die een match hebben in rechts — rechter kolommen uitgesloten",
+      "description": "Retourneert rijen uit het LINKER DataFrame waarvoor een match bestaat aan de rechterkant, MAAR neemt geen enkele kolom van de rechterkant op. Het lijkt op een INNER JOIN, maar je krijgt alleen de linker kolommen terug. Handig als filter op basis van een andere dataset.",
+      "when_to_use": "Gebruik als existentiefilter: 'Geef mij alle klanten die ten minste één bestelling hebben geplaatst' — zonder klantrijen te dupliceren voor klanten met meerdere bestellingen. Efficiënter dan inner join wanneer je geen kolommen van de rechterkant nodig hebt.",
+      "edge_cases": [
+        "Het resultaatschema bevat alleen kolommen van het LINKER DataFrame — er verschijnen geen rechter kolommen.",
+        "Meerdere matches aan de rechterkant dupliceren de linker rijen NIET (in tegenstelling tot inner join).",
+        "Equivalente SQL: SELECT * FROM customers WHERE id IN (SELECT customer_id FROM orders)"
+      ]
+    },
+    "left_anti_join": {
+      "title": "Left Anti Join",
+      "subtitle": "Retourneert linker rijen die GEEN match hebben in rechts",
+      "description": "Het tegenovergestelde van Left Semi Join. Retourneert rijen uit het LINKER DataFrame waarvoor GEEN match bestaat aan de rechterkant. Perfect voor het vinden van ontbrekende of wees-records (orphaned records). Kolommen komen uitsluitend uit het linker DataFrame.",
+      "when_to_use": "Gebruik om records te vinden die NIET bestaan in een andere tabel. Voorbeeld: klanten die nooit een bestelling hebben geplaatst, producten zonder verkoop, gebruikers die deze maand niet zijn ingelogd. Ook nuttig voor het valideren van datavolledigheid.",
+      "edge_cases": [
+        "Rijen met NULL join-sleutels: NULL != NULL, dus NULL-sleutels aan de linkerkant verschijnen altijd in de resultaten van een anti join.",
+        "Equivalente SQL: SELECT * FROM customers WHERE id NOT IN (SELECT customer_id FROM orders)",
+        "Efficiënter alternatief voor: df1.exceptAll(df1.join(df2, ..., 'inner'))"
+      ]
+    },
+    "self_join": {
+      "title": "Self Join",
+      "subtitle": "Een DataFrame met zichzelf joinen",
+      "description": "Een self join houdt in dat je een DataFrame koppelt aan een kopie van zichzelf. Wordt gebruikt voor hiërarchische relaties of het vergelijken van rijen binnen dezelfde dataset. Vereist aliassen om de twee kanten uit elkaar te houden.",
+      "when_to_use": "Gebruik voor: het vinden van manager-werknemerrelaties in dezelfde tabel, het vergelijken van elke rij met andere rijen (bijv. het opsporen van dubbele transacties), of het doorlopen van boom-/graafstructuren die in één tabel zijn opgeslagen.",
+      "edge_cases": [
+        "Geef altijd beide kanten van een self join een alias — zonder aliassen kan Spark dubbelzinnige kolomnamen niet oplossen.",
+        "Voor diepe hiërarchieën (meer dan 2 niveaus): gebruik GraphX of iteratieve joins met .checkpoint() om lineage-explosie te voorkomen.",
+        "Self join met inner creëert N² combinaties — filter zorgvuldig."
+      ]
+    },
+    "ranking_functions": {
+      "title": "Ranking: row_number vs rank vs dense_rank",
+      "subtitle": "Omgaan met duplicaten en nummeringsprotocollen",
+      "description": "Deze functies kennen een volgnummer toe aan elke rij binnen een window-partitie. Het belangrijkste verschil zit in de manier waarop ze omgaan met gelijke standen (rijen met dezelfde waarden in de ORDER BY-clausule).",
+      "when_to_use": "Gebruik row_number voor unieke identificaties, rank voor gelijke standen in competitievorm (nummers overslaan) en dense_rank voor opeenvolgende rangen (zonder gaten).",
+      "edge_cases": [
+        "Als er geen orderBy is opgegeven, kan row_number niet-deterministisch zijn.",
+        "Partitioneren op kolommen met een hoge kardinaliteit kan geheugendruk veroorzaken."
+      ]
+    },
+    "offset_functions": {
+      "title": "Offset: lag vs lead",
+      "subtitle": "Toegang tot vorige of volgende records",
+      "description": "Lag en Lead geven je toegang tot gegevens uit andere rijen (ervoor of erna) zonder self-joins uit te voeren. Lag kijkt N rijen terug, Lead kijkt N rijen vooruit.",
+      "when_to_use": "Perfect voor tijdreeksanalyses: het berekenen van maand-op-maand groei, het detecteren van statuswijzigingen of het bepalen van het tijdsverschil tussen gebeurtenissen.",
+      "edge_cases": [
+        "Standaardwaarden (default values) zijn belangrijk om NULLs in de eerste of laatste rij te voorkomen.",
+        "De sortering moet strikt zijn voor stabiele lag/lead-resultaten."
+      ]
+    },
+    "hash_aggregate": {
+      "title": "Hash Aggregate",
+      "subtitle": "De standaard en snelste aggregatiemethode",
+      "description": "Spark bouwt een hash-map op in het geheugen waarin de sleutels de groeperingskolommen zijn en de waarden de lopende aggregaties. Het werkt in twee fasen: partiële aggregatie (op executors) en finale aggregatie (na shuffle).",
+      "when_to_use": "De standaardkeuze voor de meeste groupBys. Het is razendsnel zolang de unieke groepen voor een partitie in de geheugen-heap van de executor passen.",
+      "edge_cases": [
+        "Geheugendruk: Als er te veel unieke sleutels zijn, kan Spark uitwijken naar schijf (spill to disk) of terugvallen op SortAggregate.",
+        "Groepen met hoge kardinaliteit: Kunnen leiden tot scheve (skewed) shuffles."
+      ]
+    },
+    "sort_aggregate": {
+      "title": "Sort Aggregate",
+      "subtitle": "De spill-veilige terugvaloptie voor enorme groepen",
+      "description": "Vereist dat de data gesorteerd is op groeperingssleutels. Spark loopt vervolgens door de gesorteerde data en accumuleert waarden voor een sleutel totdat er een nieuwe sleutel verschijnt.",
+      "when_to_use": "Wordt gebruikt wanneer groeperingssleutels te groot zijn voor een hash-map of wanneer data al gesorteerd is. Het is trager dan HashAggregate, maar robuuster qua geheugen omdat er geen random-access hash-map nodig is.",
+      "edge_cases": [
+        "Extra overhead van sorteren als de data nog niet gesorteerd is.",
+        "Spill-veilig: Crasht minder snel door OOM (Out Of Memory) dan HashAggregate."
+      ]
+    },
+    "columnar_formats": {
+      "title": "Kolom- vs Rijformaten",
+      "subtitle": "Parquet/ORC/Delta vs CSV/JSON",
+      "description": "Kolomgeoriënteerde formaten slaan data op per kolom in plaats van per rij. Dit is uiterst efficiënt voor analytische query's (OLAP), omdat Spark volledige kolommen kan overslaan die niet in de SELECT-clausule staan.",
+      "when_to_use": "Gebruik altijd Parquet of Delta voor grootschalige analytische workloads. Vermijd CSV/JSON voor alles behalve ruwe landingszones (landing zones).",
+      "edge_cases": [
+        "Schema-evolutie wordt beter afgehandeld door Delta Lake.",
+        "Rijgebaseerde formaten (Avro) zijn beter voor schrijfbewerkingen met hoge throughput en streaming."
+      ]
+    },
+    "predicate_pushdown": {
+      "title": "Predicate & Projection Pushdown",
+      "subtitle": "Data filteren op de opslaglaag",
+      "description": "Spark duwt de FILTER (WHERE-clausule) en SELECT naar beneden richting de opslaglaag. De reader (Parquet/Delta) retourneert alleen rijen en kolommen die aan het filter voldoen, wat de I/O drastisch vermindert.",
+      "when_to_use": "Essentieel voor goede prestaties. Spark doet dit automatisch als het formaat dit ondersteunt. Zorg ervoor dat je data partitioneert op kolommen waarop je vaak filtert.",
+      "edge_cases": [
+        "Pushdown werkt niet voor UDF's of complexe expressies.",
+        "Het filter moet zich doorgaans op een kolom van het hoogste niveau bevinden."
+      ]
+    },
+    "cache_vs_persist": {
+      "title": "cache() vs persist()",
+      "subtitle": "Geheugen en lineage beheren",
+      "description": "cache() is een verkorte schrijfwijze voor persist(MEMORY_AND_DISK). Het geeft Spark de opdracht om het DataFrame in het geheugen (en op schijf als het niet past) op te slaan nadat het voor de eerste keer is berekend.",
+      "when_to_use": "Gebruik wanneer hetzelfde DataFrame in meerdere opeenvolgende actions wordt gebruikt. Voorbeeld: een samenvatting berekenen en vervolgens de ruwe data opslaan."
+    },
+    "checkpointing": {
+      "title": "Checkpointing",
+      "subtitle": "De lineage doorbreken voor veiligheid",
+      "description": "In tegenstelling tot cache slaat checkpoint() de data op in betrouwbare opslag (HDFS/S3) en KAPT het de lineage AF. Dit voorkomt dat lineage-ketens te lang worden en StackOverflowErrors veroorzaken.",
+      "when_to_use": "Gebruik in iteratieve algoritmen (Machine Learning) of wanneer de lineage extreem complex is. Het is trager dan cache, maar betrouwbaarder."
+    },
+    "aqe_overview": {
+      "title": "Adaptive Query Execution (AQE)",
+      "subtitle": "Het brein van Modern Spark (3.x+)",
+      "description": "AQE optimaliseert het queryplan opnieuw TUSSEN query-stages in. Het gebruikt runtime-statistieken van voltooide stages om het plan voor de resterende stages te verbeteren.",
+      "when_to_use": "Standaard ingeschakeld in Spark 3.2+. Laat dit altijd aan staan. Het lost drie hoofdproblemen op: partities samenvoegen (coalescing), wisselen van join-strategie en het optimaliseren van skew joins."
+    },
+    "skew_join_optimization": {
+      "title": "Skew Join-optimalisatie",
+      "subtitle": "Omgaan met ongelijkmatige dataverdelingen",
+      "description": "Data skew treedt op wanneer één partitie veel meer data bevat dan andere, waardoor één taak 10x langer duurt. AQE detecteert dit en splitst de scheve partitie op in kleinere subpartities.",
+      "when_to_use": "Wanneer je \"straggler tasks\" (achterblijvende taken) ziet in de Spark UI. AQE handelt dit automatisch af door te zoeken naar partities die veel groter zijn dan het gemiddelde."
+    },
+    "cluster_managers": {
+      "title": "Cluster Managers (YARN vs K8s)",
+      "subtitle": "Strategieën voor resource-orkestratie",
+      "description": "Spark kan draaien op verschillende cluster managers. YARN is de traditionele Hadoop-manager, terwijl Kubernetes (K8s) de moderne cloud-native benadering is.",
+      "when_to_use": "Gebruik YARN voor oudere on-prem Hadoop-clusters. Gebruik K8s voor cloud-native, gecontaineriseerde omgevingen die betere isolatie en autoscaling vereisen."
+    },
+    "deployment_modes": {
+      "title": "Client vs Cluster Mode",
+      "subtitle": "Waar draait de Driver?",
+      "description": "In Client Mode draait de driver op de machine vanaf waar je de job indient. In Cluster Mode draait de driver binnen het cluster (op een worker node).",
+      "when_to_use": "Gebruik Client Mode voor interactief debuggen en notebooks. Gebruik Cluster Mode voor productie-jobs om netwerklatentie en uitval van de driver te voorkomen als de verbinding met je lokale machine wegvalt."
+    },
+    "memory_regions": {
+      "title": "Execution vs Storage Memory",
+      "subtitle": "De dynamische grens",
+      "description": "Execution Memory is voor shuffles/joins. Storage Memory is voor caching. Ze delen dezelfde pool; als de ene vrij is, kan de andere geheugen lenen.",
+      "when_to_use": "Pas spark.memory.fraction (standaard 0.6) en spark.memory.storageFraction (standaard 0.5) aan als je intensief gebruikmaakt van caching of enorme shuffles hebt."
+    },
+    "watermarking_logic": {
+      "title": "Watermarks & Late Data",
+      "subtitle": "Geheugengebruik beperken in stateful streams",
+      "description": "Een watermark is een voortschrijdende drempelwaarde. Als de hoogst geziene event-tijd T is, en het watermark is W, dan wordt alle data die binnenkomt met een event-tijd ouder dan (T - W) genegeerd. Hierdoor kan Spark oude status (state) uit het geheugen wissen.",
+      "when_to_use": "Verplicht telkens wanneer je aggregaties of joins over event-tijd gebruikt in Structured Streaming. Zonder watermark groeit de state oneindig door, wat leidt tot een OOM."
+    },
+    "output_modes": {
+      "title": "Streaming Output Modes",
+      "subtitle": "Hoe Spark stream-resultaten wegschrijft",
+      "description": "1. Append: Schrijft alleen NIEUWE rijen weg die nooit meer veranderen (vereist Watermark voor aggregaties).\n2. Update: Schrijft alleen de rijen weg die in de laatste trigger zijn bijgewerkt.\n3. Complete: Schrijft bij elke trigger de VOLLEDIGE resultaattabel weg.",
+      "when_to_use": "Append voor opslaan naar logs. Update voor schrijven naar een database. Complete voor kleine referentietabellen of totaaltellingen."
+    },
+    "catalogs_metastore": {
+      "title": "Hive Metastore vs Unity Catalog",
+      "subtitle": "Tabellen en metadata centraliseren",
+      "description": "Een Catalog of Metastore fungeert als de centrale adresboek van al je datasets. Het koppelt tabelnamen (bijv. \"sales.customers\") aan fysieke bestanden (bijv. \"s3://bucket/path/parquet/\"). Hive Metastore (HMS) is de traditionele open-source standaard. Unity Catalog is de moderne enterprise-standaard voor Lakehouses.",
+      "when_to_use": "Gebruik in productie altijd een Catalog. Vertrouw in code nooit puur op bestandspaden. Het ontkoppelt de fysieke opslag van de logische tabel, wat naadloze migraties mogelijk maakt."
+    },
+    "acls_fgac": {
+      "title": "Fine-Grained Access Control (FGAC)",
+      "subtitle": "Beveiliging op rij- en kolomniveau",
+      "description": "Beveiliging op opslagniveau (IAM-rollen) beschermt alleen mappen (op bucket-niveau). Moderne catalogi zoals Unity Catalog of AWS Lake Formation stellen je in staat om SQL GRANT-statements te schrijven om toegang te beperken tot specifieke rijen (bijv. alleen gebruikers in \"NL\" zien NL-rijen) of kolommen (het maskeren van BSN-nummers).",
+      "when_to_use": "Vereist voor het verwerken van PII (Persoonsgegevens), AVG/GDPR-compliance en multi-tenant dataplatformen."
+    },
+    "explode_vs_hof": {
+      "title": "Explode vs Higher-Order Functions",
+      "subtitle": "Beheer van Array-kolommen",
+      "description": "Arrays kunnen worden uitgepakt naar meerdere rijen met explode(), wat de omvang van de dataset vermenigvuldigt. Als alternatief maken Higher-Order Functions (zoals transform, filter) map/reduce-bewerkingen direct binnen de array mogelijk zonder extra rijen toe te voegen.",
+      "when_to_use": "Gebruik explode() als je moet groeperen of joinen op de individuele array-items. Gebruik transform() als je alleen de array wilt aanpassen (bijv. alle belastingen vermenigvuldigen met 1,2) met behoud van het oorspronkelijke aantal rijen."
+    },
+    "json_parsing": {
+      "title": "JSON Parsen: Structs vs Strings",
+      "subtitle": "from_json vs get_json_object",
+      "description": "Wanneer je werkt met een JSON-tekstkolom, kun je ofwel één enkel pad als string extraheren (get_json_object) ofwel de volledige JSON-string met behulp van een schema omzetten naar een native Spark StructType (from_json).",
+      "when_to_use": "Gebruik waar mogelijk from_json() met een gedefinieerd schema. Het parst de JSON één keer en slaat deze op in getypeerde kolommen, wat veel sneller is dan meerdere keren get_json_object() aanroepen op dezelfde rij."
+    },
+    "speculative_execution": {
+      "title": "Speculative Execution",
+      "subtitle": "Omgaan met achterblijvers (Stragglers)",
+      "description": "Als een node in je cluster problemen heeft (falende schijf, netwerkprobleem), kan één enkele taak 10x langer duren dan de rest (een straggler). Speculative execution merkt dit op en start een duplicaattaak op een gezonde node. De eerste die klaar is, wint.",
+      "when_to_use": "Zet dit aan (spark.speculation=true) in onbetrouwbare cloudomgevingen of heterogene clusters. Wees voorzichtig als je taken naar een externe database schrijven (idempotentie is vereist!)."
+    },
+    "broadcast_hints": {
+      "title": "Join Hints",
+      "subtitle": "De Catalyst Optimizer overrulen",
+      "description": "Soms beschikt Spark niet over nauwkeurige statistieken (bijv. bij het lezen uit een rommelig data lake) en ziet het niet dat een tabel klein genoeg is voor een broadcast. Een Broadcast Hint dwingt Spark om een BroadcastHashJoin te gebruiken.",
+      "when_to_use": "Wanneer je een trage SortMergeJoin in de UI ziet en je WEET dat één kant makkelijk in het executor-geheugen past (doorgaans < 1GB, hoewel de standaarddrempel 10MB is)."
+    },
+    "max_partition_bytes": {
+      "title": "Bestanden & maxPartitionBytes",
+      "subtitle": "Leespartities afstemmen (Tuning)",
+      "description": "Bij het lezen van honderden piepkleine CSV/JSON-bestanden koppelt Spark 1 bestand aan 1 partitie, wat veel overhead veroorzaakt. Je kunt spark.sql.files.maxPartitionBytes (standaard 128MB) gebruiken om tijdens het LEZEN meerdere kleine bestanden samen te voegen in één enkele partitie.",
+      "when_to_use": "Als je lees-stage duizenden taken heeft die elk 10ms duren, heb je last van het 'tiny-file syndrome'. Verhoog maxPartitionBytes of gebruik file packing."
+    }
+  }
+}

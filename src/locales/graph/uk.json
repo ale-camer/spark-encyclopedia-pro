@@ -1,0 +1,250 @@
+{
+  "steps": {
+    "overview": {
+      "label": "Повний шлях (Загальний огляд)",
+      "description": "Повна карта архітектури з 49 вузлів, що охоплює всі 6 фаз проєктування. Використовуйте Fit View [ ] або наблизьте будь-який кластер для вивчення рішень та міжфазових компромісів."
+    },
+    "infraestructura_cluster": {
+      "label": "Інфраструктура та пам'ять",
+      "description": "Фаза 0: Визначте менеджер кластера та стратегію виділення пам'яті перед запуском будь-якого коду. Це задає операційні межі."
+    },
+    "contexto": {
+      "label": "Контекст задачі",
+      "description": "Спочатку зрозумійте бізнес-задачу. Швидкість надходження даних, SLA щодо затримки та режим обробки визначають усі подальші рішення у Spark."
+    },
+    "datos": {
+      "label": "Характеристики даних",
+      "description": "Розмір набору даних, розподіл (skew), формат зберігання та управління даними (Catalogs і ACLs) визначають фізичні стратегії виконання."
+    },
+    "transformaciones": {
+      "label": "Типи трансформацій",
+      "description": "Операції Join, GroupBy та складні типи даних (Arrays, JSON) визначають структурну побудову та вартість Shuffle у конвеєрі."
+    },
+    "ejecucion": {
+      "label": "Особливості виконання",
+      "description": "Аналізуйте DAG, вплив Shuffle та продуктивність задач (Speculative Execution), щоб зрозуміти, де знаходяться реальні вузькі місця."
+    },
+    "optimization": {
+      "label": "Стратегії оптимізації",
+      "description": "Фінальне налаштування: управління партиціями, кешування, адаптація під час виконання з AQE та ручні підказки (Hints) / тюнінг."
+    }
+  },
+  "nodes": {
+    "root": {
+      "nombre": "Проєктування конвеєра Spark",
+      "pregunta_guia": null
+    },
+    "contexto": {
+      "nombre": "Контекст задачі",
+      "pregunta_guia": "Що має вирішувати цей конвеєр і за яких операційних обмежень?"
+    },
+    "modo_procesamiento": {
+      "nombre": "Batch чи Streaming",
+      "pregunta_guia": "Дані надходять дискретними пакетами (Batch) чи безперервним потоком (Streaming)?"
+    },
+    "modo_streaming": {
+      "nombre": "Micro-batch чи Continuous Processing",
+      "pregunta_guia": "Яка мінімально допустима затримка: секунди (micro-batch) чи мілісекунди (continuous)?"
+    },
+    "slas_latencia": {
+      "nombre": "SLA та цілі щодо затримки",
+      "pregunta_guia": "Чи визначені SLA? Яка максимально допустима затримка обробки?"
+    },
+    "trade_latency_throughput": {
+      "nombre": "Компроміс: Затримка чи Пропускна здатність",
+      "pregunta_guia": "Оптимізувати швидкість відгуку на кожну подію (latency) чи загальний обсяг обробки (throughput)?"
+    },
+    "datos": {
+      "nombre": "Характеристики даних",
+      "pregunta_guia": "Які властивості даних формують стратегію обробки?"
+    },
+    "tamano_datos": {
+      "nombre": "Розмір набору даних",
+      "pregunta_guia": "Який порядок величини? МБ, ГБ, ТБ?"
+    },
+    "candidato_broadcast": {
+      "nombre": "Чи поміщається набір даних у пам'ять для Broadcast?",
+      "pregunta_guia": "Чи поміщається мала таблиця в межі spark.sql.autoBroadcastJoinThreshold (за замовчуванням 10 МБ)?"
+    },
+    "distribucion_datos": {
+      "nombre": "Розподіл даних",
+      "pregunta_guia": "Чи збалансовані дані за партиціями, чи є домінуючі ключі?"
+    },
+    "data_skew": {
+      "nombre": "Виявлення та обробка Data Skew",
+      "pregunta_guia": "Чи є значно більші партиції? Чи існують ключі з екстремальною кардинальністю?"
+    },
+    "formato_datos": {
+      "nombre": "Формат зберігання",
+      "pregunta_guia": "Чи підтримує формат колонкове читання, ефективне стиснення та Partition Pruning?"
+    },
+    "pushdown_lectura": {
+      "nombre": "Predicate / Projection Pushdown",
+      "pregunta_guia": "Чи можна передати фільтри та вибірку колонок на рівень сховища до зчитування даних у пам'ять?"
+    },
+    "transformaciones": {
+      "nombre": "Типи трансформацій",
+      "pregunta_guia": "Яка категорія трансформацій переважає? Чи генерує вона Shuffle?"
+    },
+    "diseno_joins": {
+      "nombre": "Проєктування Join",
+      "pregunta_guia": "Яка фізична стратегія Join мінімізує Shuffle за даного розміру та розподілу даних?"
+    },
+    "estrategia_fisica_join": {
+      "nombre": "Broadcast Hash vs Shuffle Hash vs Sort Merge Join",
+      "pregunta_guia": "BHJ — якщо таблиця мала. SHJ — якщо дані поміщаються в пам'ять. SMJ (за замовчуванням) — якщо дані великі та сортовані."
+    },
+    "agregaciones": {
+      "nombre": "Агрегації та GroupBy",
+      "pregunta_guia": "Чи може агрегація бути повністю попередньо виконана всередині кожної партиції до Shuffle?"
+    },
+    "hash_vs_sort_aggregate": {
+      "nombre": "Hash Aggregate vs Sort Aggregate",
+      "pregunta_guia": "Hash Aggregate швидший, але вимагає, щоб група поміщалася в пам'ять. Sort Aggregate стійкий до витіснення на диск (spill-safe)."
+    },
+    "operaciones_ventana": {
+      "nombre": "Віконні операції (Window Operations)",
+      "pregunta_guia": "Чи вимагає бізнес-логіка обчислень над відсортованими партиціями даних (ранжування, lag, ковзне середнє)?"
+    },
+    "particionado_ventana": {
+      "nombre": "Стратегія Window partitionBy",
+      "pregunta_guia": "Чи генерує ключ партиціонування вікна збалансований розподіл, чи посилює Data Skew?"
+    },
+    "ejecucion": {
+      "nombre": "Особливості виконання",
+      "pregunta_guia": "Як трансформації матеріалізуються у стадіях (Stages) DAG? Які вузькі місця вони створюють?"
+    },
+    "impacto_shuffle": {
+      "nombre": "Генерація Shuffle",
+      "pregunta_guia": "Скільки меж стадій (Stage boundaries) вводить конвеєр? Який обсяг даних передається мережею?"
+    },
+    "config_particiones_shuffle": {
+      "nombre": "Налаштування spark.sql.shuffle.partitions",
+      "pregunta_guia": "Чи дає кількість партицій блоки по ~100–200 МБ? Чи не є вона занадто великою (накладні витрати) або малою (spill на диск)?"
+    },
+    "analisis_dag": {
+      "nombre": "Аналіз стадій DAG",
+      "pregunta_guia": "Чи має DAG надлишкові стадії? Чи використовується проміжний DataFrame повторно кілька разів?"
+    },
+    "recomputo_dataframe": {
+      "nombre": "Чи обчислюється той самий DataFrame повторно в кількох Action?",
+      "pregunta_guia": "Якщо DataFrame запускає кілька гілок Action у DAG без збереження (persist), він повністю переобчислюється щоразу."
+    },
+    "optimization": {
+      "nombre": "Стратегії оптимізації",
+      "pregunta_guia": "Які методи застосовуються для зменшення Shuffle, уникнення повторних обчислень та ефективного управління пам'яттю?"
+    },
+    "control_particiones": {
+      "nombre": "Контроль фізичних партицій",
+      "pregunta_guia": "Чи є потреба перерозподілити дані для балансування навантаження або зменшення кількості вихідних файлів?"
+    },
+    "repartition_vs_coalesce": {
+      "nombre": "Repartition vs Coalesce",
+      "pregunta_guia": "Repartition: викликає Shuffle, балансує дані. Coalesce: без Shuffle, лише зменшує кількість партицій без перерозподілу."
+    },
+    "persistencia": {
+      "nombre": "Збереження проміжного DataFrame (Persistence)",
+      "pregunta_guia": "Чи варто матеріалізувати цей проміжний DataFrame, щоб уникнути дорогого повторного обчислення?"
+    },
+    "cache_vs_checkpoint": {
+      "nombre": "Cache vs Checkpoint",
+      "pregunta_guia": "Cache: швидкий, зберігає родовід (lineage). Checkpoint: обрізає родовід DAG, записує на диск, надійніший."
+    },
+    "aqe": {
+      "nombre": "Adaptive Query Execution (AQE)",
+      "pregunta_guia": "Чи увімкнено AQE (Spark 3+)? Які автоматичні оптимізації він пропонує для цього конвеєра?"
+    },
+    "capacidades_aqe": {
+      "nombre": "Dynamic Coalesce + Dynamic Join + Skew Join",
+      "pregunta_guia": "AQE може повністю змінити план виконання на льоту: об'єднує партиції після Shuffle, конвертує у Broadcast та розділяє перекошені партиції."
+    },
+    "infraestructura_cluster": {
+      "nombre": "Менеджери кластера (Cluster Managers)",
+      "pregunta_guia": "Який менеджер ресурсів координуватиме виконавців (executors) і як управляється пам'ять?"
+    },
+    "infra_yarn": {
+      "nombre": "Hadoop YARN",
+      "pregunta_guia": "Класичний корпоративний вибір. Інтегрований з екосистемами HDFS та MapReduce."
+    },
+    "infra_k8s": {
+      "nombre": "Kubernetes (K8s)",
+      "pregunta_guia": "Сучасний cloud-native вибір. Контейнеризовані виконавці (Docker) та ізоляція."
+    },
+    "gestion_memoria": {
+      "nombre": "Unified Memory Manager",
+      "pregunta_guia": "Як Spark розподілятиме ОЗП між виконанням (Execution) та кешем зберігання (Storage)?"
+    },
+    "manejo_estado": {
+      "nombre": "Stateful vs Stateless Streaming",
+      "pregunta_guia": "Чи потрібно агрегувати дані між кількома батчами (наприклад, ковзні підсумки, сесіонізація)?"
+    },
+    "watermarking": {
+      "nombre": "Watermarking (Запізнілі дані)",
+      "pregunta_guia": "Як довго Spark має чекати на дані, що запізнюються, перед очищенням стану?"
+    },
+    "modos_salida_streaming": {
+      "nombre": "Режими виводу (Output Modes)",
+      "pregunta_guia": "Як ми записуємо агреговані результати? Append, Update чи Complete?"
+    },
+    "gobernanza_datos": {
+      "nombre": "Управління даними та виявлення (Data Governance)",
+      "pregunta_guia": "Як користувачі знаходитимуть цей набір даних і кому дозволено доступ до нього?"
+    },
+    "sistema_catalogo": {
+      "nombre": "Система каталогів (Hive vs Unity)",
+      "pregunta_guia": "Чи варто реєструвати таблиці в центральному метасторі для SQL-доступу та відстеження родоводу (lineage)?"
+    },
+    "control_acceso": {
+      "nombre": "Контроль доступу (ACLs)",
+      "pregunta_guia": "Чи потрібен нам детальний контроль доступу (Fine-Grained Access Control на рівні рядків/колонок), чи достатньо IAM на рівні сховища?"
+    },
+    "tipos_complejos": {
+      "nombre": "Складні типи даних",
+      "pregunta_guia": "Чи працюємо ми з вкладеними структурами (JSON, Maps, Arrays)?"
+    },
+    "manejo_arrays": {
+      "nombre": "Explode vs Transform",
+      "pregunta_guia": "Розгортаємо ми масиви в рядки (explode) чи модифікуємо їх на місці (SQL HOF transform)?"
+    },
+    "extraccion_json": {
+      "nombre": "Парсинг вкладеного JSON",
+      "pregunta_guia": "Витягувати окремі рядкові поля чи парсити весь JSON у структуру Spark Struct?"
+    },
+    "manejo_rezagados": {
+      "nombre": "Speculative Execution",
+      "pregunta_guia": "Чи працюють деякі задачі випадково набагато повільніше через апаратні збої або проблемні вузли?"
+    },
+    "optimizacion_avanzada": {
+      "nombre": "Просунуте налаштування та Hints",
+      "pregunta_guia": "Чи можемо ми вручну спрямувати оптимізатор Catalyst, коли статистика помиляється?"
+    },
+    "hints_sql": {
+      "nombre": "SQL Hints (Broadcast, Repartition)",
+      "pregunta_guia": "Чи слід примусово задати стратегію Join, якщо оптимізатор неправильно оцінює розмір таблиці?"
+    },
+    "max_partition_bytes": {
+      "nombre": "Налаштування maxPartitionBytes",
+      "pregunta_guia": "Чи зчитуємо ми мільйони крихітних файлів або величезні неподільні блоки?"
+    }
+  },
+  "edges": {
+    "e01": "Обраний режим обробки визначає досяжний діапазон затримки. Batch не може гарантувати затримку менше хвилини.",
+    "e02": "Розмір набору даних безпосередньо диктує застосовність Broadcast Join. Вище порогу він виключається.",
+    "e03": "Якщо набір даних вкладається у поріг Broadcast, BHJ є оптимальним вибором за замовчуванням.",
+    "e04": "Незбалансований розподіл ключів створює партиції різного розміру, проявляючись як Data Skew.",
+    "e05": "Data Skew сильно впливає на Sort Merge Join: одна партиція концентрує в собі більшу частину робочого навантаження.",
+    "e06": "При увімкненому AQE оптимізатор Skew Join розділяє перевантажені партиції під час виконання.",
+    "e07": "Якщо ключ партиціонування вікна збігається з перекошеним ключем, відповідний виконавець (executor) буде перевантажений.",
+    "e08": "Будь-який Join, окрім BHJ, вводить межу стадії (Stage boundary) та повну операцію Shuffle.",
+    "e09": "Операції groupBy/agg за своєю природою викликають Shuffle для збору однакових рядків із різних партицій.",
+    "e10": "Віконні функції викликають Shuffle для партиціонування та сортування даних.",
+    "e11": "Обсяг даних після Shuffle диктує оптимальну кількість партицій для підтримки блоків по ~128–200 МБ.",
+    "e12": "AQE діє в точках матеріалізації Shuffle, динамічно регулюючи підсумкову кількість партицій.",
+    "e13": "Якщо проміжний DataFrame є джерелом для кількох Action, повторні обчислення викликають потребу в збереженні (persist).",
+    "e14": "Колонкові формати (Parquet, ORC) нативно підтримують Projection Pushdown. CSV та JSON — ні.",
+    "e15": "Ефективний Pushdown скорочує обсяг даних, що зчитуються в пам'ять, послаблюючи обмеження за розміром на наступних кроках.",
+    "e16": "Надмірний Shuffle викликає необхідність контролю фізичних партицій (repartition/coalesce).",
+    "e17": "Суворі SLA можуть забороняти використання Checkpoint (запис на диск) через додаткову затримку, що вноситься.",
+    "e18": "Пріоритет пропускної здатності (throughput) передбачає більше партицій (паралелізм). Низька затримка вимагає меншої кількості задач."
+  }
+}
