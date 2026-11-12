@@ -53,7 +53,20 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({
   const step = steps[currentStep];
   const { isLightMode, toggleTheme } = useTheme();
   const { currentLanguage, t, openLanguageModal } = useI18n();
-  const [isStepperCompact, setIsStepperCompact] = useState(false);
+  const [isStepperCompact, setIsStepperCompact] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 768
+  );
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+
+  const handleContentScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    if (top > 28 && !isHeaderCompact) {
+      setIsHeaderCompact(true);
+      setIsStepperCompact(true);
+    } else if (top <= 10 && isHeaderCompact) {
+      setIsHeaderCompact(false);
+    }
+  };
 
   const totalTopics = refSections.reduce((acc, s) => acc + s.entries.length, 0);
   const visitedInStep = step.visibleNodeIds.filter((id) => visitedNodeIds.has(id)).length;
@@ -63,16 +76,17 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({
   }
 
   return (
-    <div className="narrative-panel">
+    <div className={`narrative-panel ${isHeaderCompact ? 'is-header-compact' : ''}`}>
       {/* Header & Search */}
       <div
         className="top-navigation"
         style={{
-          padding: '20px 20px 12px 20px',
+          padding: isHeaderCompact ? '10px 16px 8px 16px' : '20px 20px 12px 20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px',
+          gap: isHeaderCompact ? '8px' : '14px',
           marginBottom: 0,
+          transition: 'padding 0.22s ease, gap 0.22s ease',
         }}
       >
         <div
@@ -223,7 +237,7 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({
       </div>
 
       {/* Step content */}
-      <div className="narrative-content">
+      <div className="narrative-content" onScroll={handleContentScroll}>
         <div
           style={{
             display: 'flex',

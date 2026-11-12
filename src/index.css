@@ -3099,3 +3099,192 @@ h1, h2, h3, p, ul { margin: 0; padding: 0; }
   font-size: 0.92rem;
 }
 
+/* =========================================================
+   Smart Auto-Compact Header on Scroll & Mobile Responsive Layout
+   ========================================================= */
+.narrative-panel.is-header-compact .header-quick-actions {
+  display: none;
+}
+
+.narrative-panel.is-header-compact .stepper-header {
+  padding: 6px 16px 2px;
+}
+
+.narrative-panel.is-header-compact .stepper-pills {
+  padding: 4px 16px 8px;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .narrative-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 48vh;
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .narrative-panel .top-navigation {
+    padding: 10px 14px 8px 14px !important;
+    gap: 8px !important;
+  }
+
+  .narrative-panel.is-header-compact .search-container {
+    display: none;
+  }
+
+  .stepper-header {
+    padding: 6px 14px 2px;
+  }
+
+  .stepper-pills {
+    padding: 4px 14px 8px;
+    gap: 4px;
+  }
+
+  .step-pill {
+    height: 26px;
+    font-size: 0.72rem;
+  }
+
+  .narrative-content {
+    padding: 14px 14px;
+    gap: 12px;
+  }
+
+  .narrative-title {
+    font-size: 1.2rem;
+  }
+
+  .narrative-description {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .narrative-card {
+    padding: 12px 14px;
+  }
+
+  .narrative-nav {
+    padding: 8px 14px;
+  }
+
+  .nav-btn {
+    padding: 7px 12px;
+    font-size: 0.78rem;
+  }
+
+  .canvas-container {
+    flex: 1;
+    min-height: 52vh;
+    width: 100%;
+  }
+
+  .canvas-toolbar {
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+  }
+
+  .canvas-tool-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+
+  .collapsed-menu-dock {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    justify-content: space-between;
+  }
+
+  .canvas-legend {
+    bottom: 10px;
+    right: 10px;
+    max-width: calc(100vw - 70px);
+  }
+
+  /* Modals on mobile */
+  .modal-content {
+    width: 96vw;
+    max-height: 92vh;
+    border-radius: 14px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-title {
+    font-size: 1.2rem;
+  }
+
+  .modal-tabs {
+    padding: 0 12px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    padding: 10px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .ref-modal {
+    width: 96vw;
+    height: 92vh;
+    border-radius: 14px;
+  }
+
+  .ref-modal-header {
+    padding: 12px 16px;
+  }
+
+  .ref-modal-body {
+    flex-direction: column;
+  }
+
+  .ref-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-height: 26vh;
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .ref-entry-header {
+    padding: 14px 16px 10px;
+  }
+
+  .ref-entry-name {
+    font-size: 1.3rem;
+  }
+
+  .ref-tabs {
+    padding: 0 14px;
+    overflow-x: auto;
+  }
+
+  .ref-tab-content {
+    padding: 14px 16px;
+  }
+
+  .language-modal-content {
+    width: 96vw;
+    max-height: 90vh;
+  }
+
+  .language-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
